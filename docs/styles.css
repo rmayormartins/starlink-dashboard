@@ -6,7 +6,16 @@ h1 { margin:0; font-size: 20px; }
 main { display: grid; grid-template-columns: 2fr 1fr; gap: 12px; padding: 12px; }
 #map-wrap { position: relative; }
 #map { width: 100%; height: 70vh; border-radius: 12px; border: 1px solid #1c2a4a; }
-.panel { position: absolute; top: 10px; left: 10px; background: var(--panel); padding: 10px; border-radius: 10px; box-shadow: 0 6px 20px rgba(0,0,0,.35); }
+.panel {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: var(--panel);
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  z-index: 1000;            /* <-- garante que fica acima do Leaflet */
+}
 .panel label { display:block; margin:6px 0; font-size: 14px; }
 #sat-panel { background: #0d172b; border: 1px solid #1c2a4a; border-radius: 12px; padding: 12px; }
 #snrPlot, #constPlot { height: 200px; }
