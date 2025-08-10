@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <title>Starlink Dashboard Educativo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="styles.css" />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/satellite.js/dist/satellite.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Starlink Dashboard Educativo</h1>
+    <div id="meta"></div>
+  </header>
+
+  <main>
+    <section id="map-wrap">
+      <div id="map"></div>
+      <div class="panel">
+        <label>Elevação mínima (°):
+          <input id="elevMin" type="number" value="25" min="0" max="89" step="1">
+        </label>
+        <label>Sua latitude:
+          <input id="lat" type="number" value="-27.588" step="0.001">
+        </label>
+        <label>Sua longitude:
+          <input id="lon" type="number" value="-48.613" step="0.001">
+        </label>
+        <button id="btnApply">Aplicar</button>
+        <div id="visibleInfo"></div>
+      </div>
+    </section>
+
+    <section id="sat-panel">
+      <h2>Satélite selecionado</h2>
+      <div id="sat-info">Clique em um satélite no mapa.</div>
+      <div id="rf-sim">
+        <h3>Simulação RF (didática)</h3>
+        <div id="snrPlot"></div>
+        <div id="constPlot"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <small>Dados: SpaceX v4 (TLE extraído) • Traçado: SGP4 • Footprint: aproximação geométrica</small>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
