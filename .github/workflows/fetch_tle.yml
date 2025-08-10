@@ -1,0 +1,43 @@
+name: Fetch Starlink TLEs
+
+on:
+  schedule:
+    - cron: "0 */3 * * *"   # a cada 3 horas
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/fetch_tle.yml"
+      - "scripts/build_starlink_json.js"
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Fetch SpaceX Starlink JSON
+        run: |
+          mkdir -p tmp docs/data
+          curl -sS https://api.spacexdata.com/v4/starlink > tmp/starlink_raw.json
+
+      - name: Build starlink_tle.json
+        run: |
+          node scripts/build_starlink_json.js tmp/starlink_raw.json docs/data/starlink_tle.json docs/data/meta.json
+
+      - name: Commit & Push
+        run: |
+          if [[ -n "$(git status --porcelain)" ]]; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@users.noreply.github.com"
+            git add docs/data/*.json
+            git commit -m "chore(data): update Starlink TLE JSON [skip ci]"
+            git push
+          else
+            echo "Sem mudanças"
+          fi
