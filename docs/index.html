@@ -4,26 +4,184 @@
   <meta charset="utf-8">
   <title>Starlink Dashboard Educativo</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Dashboard educativo para visualização em tempo real dos satélites Starlink">
   
   <!-- CSS -->
   <link rel="stylesheet" href="styles.css">
   
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" 
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" 
-        crossorigin="">
-  
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" 
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" 
-          crossorigin=""></script>
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   
   <!-- Satellite.js -->
   <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
   
-  <!-- Plotly.js -->
+  <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+  
+  <style>
+    /* Estilos essenciais inline para garantir funcionamento */
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0b1220;
+      color: #e8f0ff;
+    }
+    
+    header {
+      padding: 12px 20px;
+      background: #0d172b;
+      border-bottom: 2px solid #1c2a4a;
+    }
+    
+    h1 {
+      margin: 0 0 8px 0;
+      font-size: 24px;
+      color: #6aa0ff;
+    }
+    
+    #meta {
+      font-size: 14px;
+      opacity: 0.9;
+    }
+    
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 16px;
+      padding: 16px;
+      height: calc(100vh - 100px);
+    }
+    
+    #map-wrap {
+      position: relative;
+      background: #0d172b;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .panel {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      background: rgba(17, 26, 46, 0.95);
+      padding: 16px;
+      border-radius: 10px;
+      z-index: 1000;
+      min-width: 260px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    }
+    
+    .panel label {
+      display: block;
+      margin-bottom: 12px;
+      font-size: 13px;
+      color: #6aa0ff;
+    }
+    
+    .panel input {
+      width: 100%;
+      padding: 6px 10px;
+      margin-top: 4px;
+      background: #0b1220;
+      border: 1px solid #1c2a4a;
+      border-radius: 6px;
+      color: #e8f0ff;
+    }
+    
+    button {
+      width: 100%;
+      padding: 8px;
+      margin-top: 12px;
+      background: #6aa0ff;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    
+    button:hover {
+      background: #4080ff;
+    }
+    
+    .sidebar {
+      background: #0d172b;
+      border: 1px solid #1c2a4a;
+      border-radius: 12px;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    
+    .info-card {
+      background: #111a2e;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #1c2a4a;
+    }
+    
+    .info-card h3, .info-card h4 {
+      margin: 0 0 12px 0;
+      color: #6aa0ff;
+    }
+    
+    .info-card p {
+      margin: 6px 0;
+      font-size: 14px;
+    }
+    
+    .info-card hr {
+      border: none;
+      border-top: 1px solid #1c2a4a;
+      margin: 12px 0;
+    }
+    
+    #snrPlot, #constPlot {
+      height: 200px;
+      background: #0b1220;
+      border-radius: 8px;
+      margin-top: 12px;
+    }
+    
+    .legend {
+      position: absolute;
+      bottom: 16px;
+      left: 16px;
+      background: rgba(17, 26, 46, 0.95);
+      padding: 12px;
+      border-radius: 8px;
+      z-index: 1000;
+      font-size: 12px;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 4px 0;
+    }
+    
+    .legend-color {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+    }
+    
+    /* Responsivo */
+    @media (max-width: 1024px) {
+      .container {
+        grid-template-columns: 1fr;
+        grid-template-rows: 60vh auto;
+      }
+    }
+  </style>
 </head>
 <body>
   <header>
@@ -31,9 +189,12 @@
     <div id="meta">Carregando metadados...</div>
   </header>
 
-  <main>
-    <section id="map-wrap">
+  <div class="container">
+    <!-- Mapa -->
+    <div id="map-wrap">
       <div id="map"></div>
+      
+      <!-- Controles -->
       <div class="panel">
         <label>
           Elevação mínima (°):
@@ -41,41 +202,89 @@
         </label>
         <label>
           Sua latitude:
-          <input id="lat" type="number" value="-27.588" step="0.001" min="-90" max="90">
+          <input id="lat" type="number" value="-27.588" step="0.001">
         </label>
         <label>
           Sua longitude:
-          <input id="lon" type="number" value="-48.613" step="0.001" min="-180" max="180">
+          <input id="lon" type="number" value="-48.613" step="0.001">
         </label>
         <button id="btnApply">Aplicar Filtros</button>
-        <div id="visibleInfo">Calculando...</div>
-      </div>
-    </section>
-
-    <section id="sat-panel">
-      <h2>📡 Satélite Selecionado</h2>
-      <div id="sat-info">
-        <p>Clique em um satélite no mapa para ver detalhes.</p>
-        <p><small>💚 Verde = Visível | 🔵 Azul = Não visível</small></p>
+        <div id="visibleInfo" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #1c2a4a;">
+          Calculando...
+        </div>
       </div>
       
-      <div id="rf-sim">
-        <h3>📊 Simulação RF (Didática)</h3>
+      <!-- Legenda -->
+      <div class="legend">
+        <div class="legend-item">
+          <div class="legend-color" style="background: #00ff44"></div>
+          <span>Visível</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ff00ff"></div>
+          <span>Servindo (Handover)</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffaa00"></div>
+          <span>Candidato Handover</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #4488ff"></div>
+          <span>Não visível</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <!-- Satélite Selecionado -->
+      <div class="info-card">
+        <h3>📡 Satélite Selecionado</h3>
+        <div id="sat-info">
+          <p>Clique em um satélite no mapa para ver detalhes.</p>
+        </div>
+      </div>
+      
+      <!-- Condições Atmosféricas -->
+      <div class="info-card" id="weatherInfo">
+        <h4>🌤️ Condições Atmosféricas</h4>
+        <p>Carregando dados de clima...</p>
+      </div>
+      
+      <!-- Simulação de Handover -->
+      <div class="info-card">
+        <button id="btnHandover" style="margin-top: 0;">▶️ Simular Handover</button>
+        <div id="handoverInfo" style="margin-top: 12px;">
+          <p>Clique para iniciar simulação de handover.</p>
+        </div>
+      </div>
+      
+      <!-- Gráficos RF -->
+      <div class="info-card">
+        <h4>📊 Análise RF</h4>
         <div id="snrPlot"></div>
         <div id="constPlot"></div>
       </div>
-    </section>
-  </main>
-
-  <footer>
-    <small>
-      Dados: SpaceX API v4 (TLE) • Propagação: SGP4/SDP4 • 
-      Footprint: Aproximação geométrica • 
-      <a href="https://github.com/rmayormartins/starlink-dashboard" target="_blank">GitHub</a>
-    </small>
-  </footer>
+    </div>
+  </div>
 
   <!-- JavaScript -->
   <script src="app.js"></script>
+  
+  <script>
+    // Adicionar botão de handover se não existir
+    document.addEventListener('DOMContentLoaded', function() {
+      const btnHandover = document.getElementById('btnHandover');
+      if (btnHandover) {
+        btnHandover.onclick = function() {
+          if (typeof window.handoverSimulation !== 'undefined') {
+            window.handoverSimulation = !window.handoverSimulation;
+            btnHandover.textContent = window.handoverSimulation ? '⏸️ Pausar Handover' : '▶️ Simular Handover';
+            console.log('Handover simulation:', window.handoverSimulation);
+          }
+        };
+      }
+    });
+  </script>
 </body>
 </html>
