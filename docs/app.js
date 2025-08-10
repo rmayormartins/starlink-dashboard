@@ -39,7 +39,8 @@ async function init() {
   });
 
   // Mapa
-  map = L.map("map", { worldCopyJump: true }).setView([0,0], 2);
+  map = L.map("map", { worldCopyJump: true, preferCanvas: true }).setView([0,0], 2);
+const renderer = L.canvas({ padding: 0.5 }); // renderizador compartilhado
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap", maxZoom: 7
   }).addTo(map);
@@ -65,9 +66,15 @@ function drawFrame() {
     const rec = satRecs[i]; if (!rec) return;
     const st = getSatState(rec); if (!st) return;
 
-    const m = L.circleMarker([st.lat, st.lon], {
-      radius: 4, weight: 1, color: "#6aa0ff", fillOpacity: 0.9
-    }).addTo(layerGroup);
+    // MARCADOR: pequeno, preenchido (sem stroke), via Canvas
+const m = L.circleMarker([st.lat, st.lon], {
+  renderer,
+  radius: 2.5,          // 2.5–3 fica bom no zoom 2
+  stroke: false,
+  fill: true,
+  fillOpacity: 1,
+  fillColor: "#6aa0ff"
+}).addTo(layerGroup);
     m.on("click", () => selectSatellite(t, rec, st));
 
     if (st.el >= obs.elevMin) {
