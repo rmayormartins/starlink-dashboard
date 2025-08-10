@@ -8,7 +8,8 @@ on:
     paths:
       - ".github/workflows/fetch_tle.yml"
       - "scripts/build_starlink_json.js"
-
+permissions:
+  contents: write
 jobs:
   fetch:
     runs-on: ubuntu-latest
