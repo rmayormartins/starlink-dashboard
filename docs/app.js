@@ -7,47 +7,38 @@ let satRecs = [];
 let map, layerGroup;
 let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
 
-function makeRec(t) {
-  try { return satellite.twoline2satrec(t.line1, t.line2); } catch { return null; }
-}
-
-function getSatState(rec, time = new Date()) {
-  const gmst = satellite.gstime(time);
-  const pv = satellite.propagate(rec, time);
-  if (!pv.position) return null;
-  const eci = pv.position;
-  const gd = satellite.eciToGeodetic(eci, gmst);
-  const lat = satellite.radiansToDegrees(gd.latitude);
-  const lon = satellite.radiansToDegrees(gd.longitude);
-  const alt = gd.height;
-
-  const obsGd = {
-    latitude: satellite.degreesToRadians(obs.lat),
-    longitude: satellite.degreesToRadians(obs.lon),
-    height: 0
-  };
-  const satEcf = satellite.eciToEcf(eci, gmst);
-  const look = satellite.ecfToLookAngles(obsGd, satEcf);
-  const az = satellite.radiansToDegrees(look.azimuth);
-  const el = satellite.radiansToDegrees(look.elevation);
-
-  return { lat, lon, alt, az, el };
-}
-
-function footprintRadiusKm(altKm, elevMinDeg) {
-  const Re = 6371, h = altKm, e = elevMinDeg * Math.PI/180;
-  const psi = Math.acos((Re/(Re+h)) * Math.cos(e)) - e;
-  return Re * psi;
+async function safeFetchJSON(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`HTTP ${r.status} ao carregar ${url}`);
+  return r.json();
 }
 
 async function init() {
-  const meta = await (await fetch(META_URL)).json();
-  document.getElementById("meta").textContent =
-    `Satélites: ${meta.count} • Fonte: ${meta.source} • Atualizado: ${new Date(meta.updatedAt).toLocaleString()}`;
+  try {
+    const meta = await safeFetchJSON(META_URL);
+    document.getElementById("meta").textContent =
+      `Satélites: ${meta.count} • Fonte: ${meta.source} • Atualizado: ${new Date(meta.updatedAt).toLocaleString()}`;
+  } catch (e) {
+    console.error("Falha ao carregar meta:", e);
+    document.getElementById("meta").textContent = "Falha ao carregar meta.json";
+  }
 
-  tleList = await (await fetch(DATA_URL)).json();
-  satRecs = tleList.map(makeRec);
+  try {
+    tleList = await safeFetchJSON(DATA_URL);
+    console.log("TLEs carregados:", tleList.length);
+  } catch (e) {
+    console.error("Falha ao carregar starlink_tle.json:", e);
+    alert("Não consegui carregar os satélites (veja o console do navegador).");
+    tleList = [];
+  }
 
+  // Montar os 'satrec'
+  satRecs = tleList.map(t => {
+    try { return satellite.twoline2satrec(t.line1, t.line2); }
+    catch (err) { console.warn("TLE inválido para", t.noradId, err); return null; }
+  });
+
+  // Mapa
   map = L.map("map", { worldCopyJump: true }).setView([0,0], 2);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
     attribution: "© OpenStreetMap", maxZoom: 7
@@ -65,6 +56,7 @@ async function init() {
   setInterval(drawFrame, REFRESH_MS);
 }
 
+
 function drawFrame() {
   layerGroup.clearLayers();
   let visible = 0;
@@ -74,7 +66,7 @@ function drawFrame() {
     const st = getSatState(rec); if (!st) return;
 
     const m = L.circleMarker([st.lat, st.lon], {
-      radius: 3, weight: 1, color: "#6aa0ff", fillOpacity: 0.9
+      radius: 4, weight: 1, color: "#6aa0ff", fillOpacity: 0.9
     }).addTo(layerGroup);
     m.on("click", () => selectSatellite(t, rec, st));
 
