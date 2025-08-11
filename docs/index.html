@@ -2,11 +2,11 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>Starlink Dashboard Educativo</title>
+  <title>STARLINK ORBITAL TRACKING SYSTEM</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <!-- CSS -->
-  <link rel="stylesheet" href="styles.css">
+  <!-- Fontes Monospace -->
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
   
   <!-- Leaflet -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
@@ -19,249 +19,500 @@
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   
   <style>
-    /* Estilos essenciais inline para garantir funcionamento */
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0b1220;
-      color: #e8f0ff;
+    /* Terminal Theme */
+    :root {
+      --terminal-green: #00ff00;
+      --terminal-green-dark: #004400;
+      --terminal-yellow: #ffff00;
+      --terminal-white: #ffffff;
+      --terminal-bg: #000000;
+      --terminal-bg-secondary: #0a0a0a;
+      --terminal-border: #00ff00;
     }
     
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'JetBrains Mono', 'Consolas', 'Courier New', monospace;
+      background: var(--terminal-bg);
+      color: var(--terminal-green);
+      font-size: 12px;
+      font-weight: 300;
+      line-height: 1.4;
+      overflow-x: hidden;
+    }
+    
+    /* Scanlines effect */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(
+        transparent 50%,
+        rgba(0, 255, 0, 0.03) 50%
+      );
+      background-size: 100% 4px;
+      pointer-events: none;
+      z-index: 9999;
+    }
+    
+    /* Header */
     header {
-      padding: 12px 20px;
-      background: #0d172b;
-      border-bottom: 2px solid #1c2a4a;
+      padding: 10px 15px;
+      background: var(--terminal-bg);
+      border-bottom: 1px solid var(--terminal-green);
+      text-align: center;
     }
     
     h1 {
-      margin: 0 0 8px 0;
-      font-size: 24px;
-      color: #6aa0ff;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 2px;
+      color: var(--terminal-green);
+      text-shadow: 0 0 10px var(--terminal-green);
     }
     
     #meta {
-      font-size: 14px;
-      opacity: 0.9;
+      font-size: 11px;
+      margin-top: 5px;
+      opacity: 0.8;
     }
     
+    /* Container */
     .container {
       display: grid;
-      grid-template-columns: 1fr 380px;
-      gap: 16px;
-      padding: 16px;
-      height: calc(100vh - 100px);
+      grid-template-columns: 1fr 400px;
+      gap: 10px;
+      padding: 10px;
+      height: calc(100vh - 80px);
     }
     
+    /* Map */
     #map-wrap {
       position: relative;
-      background: #0d172b;
-      border-radius: 12px;
-      overflow: hidden;
+      background: var(--terminal-bg-secondary);
+      border: 1px solid var(--terminal-green);
+      min-height: 400px;
+      height: 60vh;
     }
     
     #map {
       width: 100%;
       height: 100%;
+      filter: brightness(0.9) contrast(1.1);
     }
     
+    /* Resize Handle */
+    .resize-handle {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 10px;
+      background: var(--terminal-bg);
+      border-top: 1px solid var(--terminal-green);
+      cursor: ns-resize;
+      text-align: center;
+      line-height: 10px;
+      font-size: 8px;
+      color: var(--terminal-green);
+      user-select: none;
+    }
+    
+    .resize-handle:hover {
+      background: var(--terminal-green-dark);
+    }
+    
+    /* Control Panel */
     .panel {
       position: absolute;
-      top: 16px;
-      left: 16px;
-      background: rgba(17, 26, 46, 0.95);
-      padding: 16px;
-      border-radius: 10px;
+      top: 10px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 10px;
+      border: 1px solid var(--terminal-green);
       z-index: 1000;
-      min-width: 260px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      min-width: 280px;
+      font-size: 11px;
     }
     
-    .panel label {
+    .panel-title {
+      text-align: center;
+      margin-bottom: 10px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--terminal-green);
+      color: var(--terminal-green);
+      font-weight: 400;
+    }
+    
+    .control-group {
+      margin-bottom: 10px;
+    }
+    
+    .control-group label {
       display: block;
-      margin-bottom: 12px;
-      font-size: 13px;
-      color: #6aa0ff;
+      margin-bottom: 3px;
+      color: var(--terminal-green);
+      font-size: 11px;
     }
     
-    .panel input {
+    .control-group input[type="number"] {
       width: 100%;
-      padding: 6px 10px;
-      margin-top: 4px;
-      background: #0b1220;
-      border: 1px solid #1c2a4a;
-      border-radius: 6px;
-      color: #e8f0ff;
+      padding: 4px 6px;
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      color: var(--terminal-green);
+      font-family: inherit;
+      font-size: 11px;
+    }
+    
+    .control-group input[type="number"]:focus {
+      outline: none;
+      box-shadow: 0 0 5px var(--terminal-green);
+    }
+    
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+    }
+    
+    .checkbox-group input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--terminal-green);
     }
     
     button {
       width: 100%;
-      padding: 8px;
-      margin-top: 12px;
-      background: #6aa0ff;
-      border: none;
-      border-radius: 6px;
-      color: white;
-      font-weight: 600;
+      padding: 6px;
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      color: var(--terminal-green);
+      font-family: inherit;
+      font-size: 11px;
       cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
     
     button:hover {
-      background: #4080ff;
+      background: var(--terminal-green);
+      color: var(--terminal-bg);
+      text-shadow: none;
     }
     
-    .sidebar {
-      background: #0d172b;
-      border: 1px solid #1c2a4a;
-      border-radius: 12px;
-      padding: 20px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+    #visibleInfo {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--terminal-green);
+      font-size: 11px;
     }
     
-    .info-card {
-      background: #111a2e;
-      border-radius: 8px;
-      padding: 16px;
-      border: 1px solid #1c2a4a;
-    }
-    
-    .info-card h3, .info-card h4 {
-      margin: 0 0 12px 0;
-      color: #6aa0ff;
-    }
-    
-    .info-card p {
-      margin: 6px 0;
-      font-size: 14px;
-    }
-    
-    .info-card hr {
-      border: none;
-      border-top: 1px solid #1c2a4a;
-      margin: 12px 0;
-    }
-    
-    #snrPlot, #constPlot {
-      height: 200px;
-      background: #0b1220;
-      border-radius: 8px;
-      margin-top: 12px;
-    }
-    
+    /* Legend */
     .legend {
       position: absolute;
-      bottom: 16px;
-      left: 16px;
-      background: rgba(17, 26, 46, 0.95);
-      padding: 12px;
-      border-radius: 8px;
+      bottom: 20px;
+      left: 10px;
+      background: rgba(0, 0, 0, 0.9);
+      padding: 8px;
+      border: 1px solid var(--terminal-green);
       z-index: 1000;
-      font-size: 12px;
+      font-size: 10px;
     }
     
     .legend-item {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin: 4px 0;
+      gap: 6px;
+      margin: 3px 0;
     }
     
     .legend-color {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
+      width: 10px;
+      height: 10px;
+      border: 1px solid;
     }
     
-    /* Responsivo */
+    /* Sidebar */
+    .sidebar {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      padding: 10px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .info-card {
+      background: var(--terminal-bg-secondary);
+      border: 1px solid var(--terminal-green);
+      padding: 10px;
+      font-size: 11px;
+    }
+    
+    .info-card h3, .info-card h4 {
+      margin: 0 0 8px 0;
+      color: var(--terminal-green);
+      font-weight: 400;
+      font-size: 12px;
+      text-align: center;
+      border-bottom: 1px solid var(--terminal-green);
+      padding-bottom: 5px;
+    }
+    
+    .terminal-text {
+      font-family: 'JetBrains Mono', 'Consolas', monospace;
+      white-space: pre;
+      line-height: 1.3;
+      color: var(--terminal-green);
+    }
+    
+    #snrPlot, #constPlot {
+      height: 180px;
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      margin-top: 10px;
+    }
+    
+    /* Terminal Output */
+    #terminalOutput {
+      height: 120px;
+      overflow-y: auto;
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      padding: 5px;
+      font-size: 10px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .terminal-line {
+      color: var(--terminal-green);
+      margin: 1px 0;
+    }
+    
+    .terminal-line .time {
+      color: var(--terminal-yellow);
+    }
+    
+    .terminal-line .type {
+      color: var(--terminal-white);
+    }
+    
+    /* Observer Marker */
+    .observer-marker {
+      color: var(--terminal-white);
+      font-size: 10px;
+      font-weight: bold;
+      text-shadow: 0 0 5px var(--terminal-green);
+      background: rgba(0, 0, 0, 0.8);
+      padding: 2px 4px;
+      border: 1px solid var(--terminal-green);
+    }
+    
+    /* Popup */
+    .leaflet-popup-content-wrapper {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      border-radius: 0;
+    }
+    
+    .leaflet-popup-content {
+      color: var(--terminal-green);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      margin: 8px;
+    }
+    
+    .leaflet-popup-tip {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+    }
+    
+    .terminal-popup {
+      white-space: pre;
+      line-height: 1.4;
+    }
+    
+    /* Handover Notification */
+    .handover-notification {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      z-index: 10000;
+      animation: slideIn 0.5s;
+    }
+    
+    .terminal-box {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green);
+      color: var(--terminal-green);
+      padding: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      white-space: pre;
+      box-shadow: 0 0 20px var(--terminal-green);
+    }
+    
+    /* Animations */
+    @keyframes blink {
+      0%, 50% { opacity: 1; }
+      51%, 100% { opacity: 0; }
+    }
+    
+    .blink {
+      animation: blink 1s infinite;
+    }
+    
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
+    }
+    
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: var(--terminal-bg);
+      border: 1px solid var(--terminal-green-dark);
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: var(--terminal-green-dark);
+      border: 1px solid var(--terminal-green);
+    }
+    
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--terminal-green);
+    }
+    
+    /* Responsive */
     @media (max-width: 1024px) {
       .container {
         grid-template-columns: 1fr;
-        grid-template-rows: 60vh auto;
+        grid-template-rows: 50vh auto;
       }
     }
   </style>
 </head>
 <body>
   <header>
-    <h1>🛰️ Starlink Dashboard Educativo</h1>
-    <div id="meta">Carregando metadados...</div>
+    <h1>═══ STARLINK ORBITAL TRACKING SYSTEM ═══</h1>
+    <div id="meta">[INITIALIZING...]</div>
   </header>
 
   <div class="container">
-    <!-- Mapa -->
+    <!-- Map -->
     <div id="map-wrap">
       <div id="map"></div>
       
-      <!-- Controles -->
+      <!-- Control Panel -->
       <div class="panel">
-        <label>
-          Elevação mínima (°):
+        <div class="panel-title">╔═ CONTROL PANEL ═╗</div>
+        
+        <div class="control-group">
+          <label>MIN_ELEVATION:</label>
           <input id="elevMin" type="number" value="25" min="0" max="90" step="5">
-        </label>
-        <label>
-          Sua latitude:
+        </div>
+        
+        <div class="control-group">
+          <label>LATITUDE:</label>
           <input id="lat" type="number" value="-27.588" step="0.001">
-        </label>
-        <label>
-          Sua longitude:
+        </div>
+        
+        <div class="control-group">
+          <label>LONGITUDE:</label>
           <input id="lon" type="number" value="-48.613" step="0.001">
-        </label>
-        <button id="btnApply">Aplicar Filtros</button>
-        <div id="visibleInfo" style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #1c2a4a;">
-          Calculando...
+        </div>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="considerRain" checked>
+          <label for="considerRain">RAIN_ATTENUATION</label>
+        </div>
+        
+        <div class="checkbox-group">
+          <input type="checkbox" id="showFootprints" checked>
+          <label for="showFootprints">SHOW_FOOTPRINTS</label>
+        </div>
+        
+        <button id="btnApply">[APPLY_FILTERS]</button>
+        
+        <div id="visibleInfo">
+          <div class="terminal-text">CALCULATING...</div>
         </div>
       </div>
       
-      <!-- Legenda -->
+      <!-- Legend -->
       <div class="legend">
         <div class="legend-item">
-          <div class="legend-color" style="background: #00ff44"></div>
-          <span>Visível</span>
+          <div class="legend-color" style="background: #00ff00; border-color: #00ff00;"></div>
+          <span>VISIBLE</span>
         </div>
         <div class="legend-item">
-          <div class="legend-color" style="background: #ff00ff"></div>
-          <span>Servindo (Handover)</span>
+          <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
+          <span>SERVING</span>
         </div>
         <div class="legend-item">
-          <div class="legend-color" style="background: #ffaa00"></div>
-          <span>Candidato Handover</span>
+          <div class="legend-color" style="background: #ffff00; border-color: #ffff00;"></div>
+          <span>CANDIDATE</span>
         </div>
         <div class="legend-item">
-          <div class="legend-color" style="background: #4488ff"></div>
-          <span>Não visível</span>
+          <div class="legend-color" style="background: #004400; border-color: #004400;"></div>
+          <span>NOT_VISIBLE</span>
         </div>
       </div>
     </div>
 
     <!-- Sidebar -->
     <div class="sidebar">
-      <!-- Satélite Selecionado -->
+      <!-- Terminal Output -->
       <div class="info-card">
-        <h3>📡 Satélite Selecionado</h3>
+        <h4>╔═ SYSTEM LOG ═╗</h4>
+        <div id="terminalOutput"></div>
+      </div>
+      
+      <!-- Selected Satellite -->
+      <div class="info-card">
+        <h3>╔═ SATELLITE DATA ═╗</h3>
         <div id="sat-info">
-          <p>Clique em um satélite no mapa para ver detalhes.</p>
+          <div class="terminal-text">NO SATELLITE SELECTED
+CLICK ON MAP TO SELECT</div>
         </div>
       </div>
       
-      <!-- Condições Atmosféricas -->
+      <!-- Weather -->
       <div class="info-card" id="weatherInfo">
-        <h4>🌤️ Condições Atmosféricas</h4>
-        <p>Carregando dados de clima...</p>
+        <div class="terminal-text">LOADING WEATHER...</div>
       </div>
       
-      <!-- Simulação de Handover -->
+      <!-- Handover -->
       <div class="info-card">
-        <button id="btnHandover" style="margin-top: 0;">▶️ Simular Handover</button>
-        <div id="handoverInfo" style="margin-top: 12px;">
-          <p>Clique para iniciar simulação de handover.</p>
+        <button id="btnHandover">[START_HANDOVER]</button>
+        <div id="handoverInfo" style="margin-top: 10px;">
+          <div class="terminal-text">HANDOVER INACTIVE</div>
         </div>
       </div>
       
-      <!-- Gráficos RF -->
+      <!-- RF Plots -->
       <div class="info-card">
-        <h4>📊 Análise RF</h4>
+        <h4>╔═ RF ANALYSIS ═╗</h4>
         <div id="snrPlot"></div>
         <div id="constPlot"></div>
       </div>
@@ -270,21 +521,5 @@
 
   <!-- JavaScript -->
   <script src="app.js"></script>
-  
-  <script>
-    // Adicionar botão de handover se não existir
-    document.addEventListener('DOMContentLoaded', function() {
-      const btnHandover = document.getElementById('btnHandover');
-      if (btnHandover) {
-        btnHandover.onclick = function() {
-          if (typeof window.handoverSimulation !== 'undefined') {
-            window.handoverSimulation = !window.handoverSimulation;
-            btnHandover.textContent = window.handoverSimulation ? '⏸️ Pausar Handover' : '▶️ Simular Handover';
-            console.log('Handover simulation:', window.handoverSimulation);
-          }
-        };
-      }
-    });
-  </script>
 </body>
 </html>
