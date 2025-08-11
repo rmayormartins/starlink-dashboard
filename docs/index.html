@@ -25,6 +25,7 @@
       --terminal-green-dark: #004400;
       --terminal-yellow: #ffff00;
       --terminal-white: #ffffff;
+      --terminal-red: #ff0000;
       --terminal-bg: #000000;
       --terminal-bg-secondary: #0a0a0a;
       --terminal-border: #00ff00;
@@ -85,13 +86,20 @@
       opacity: 0.8;
     }
     
-    /* Container */
-    .container {
+    /* Main Grid Layout */
+    .main-grid {
       display: grid;
       grid-template-columns: 1fr 400px;
       gap: 10px;
       padding: 10px;
       height: calc(100vh - 80px);
+    }
+    
+    /* Left Column */
+    .left-column {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
     
     /* Map */
@@ -100,7 +108,8 @@
       background: var(--terminal-bg-secondary);
       border: 1px solid var(--terminal-green);
       min-height: 400px;
-      height: 60vh;
+      height: 50vh;
+      flex-shrink: 0;
     }
     
     #map {
@@ -130,12 +139,57 @@
       background: var(--terminal-green-dark);
     }
     
+    /* RF System Info Area (Campo Vermelho) */
+    .rf-info-area {
+      flex: 1;
+      background: var(--terminal-bg);
+      border: 2px solid var(--terminal-red);
+      padding: 10px;
+      overflow-y: auto;
+      min-height: 200px;
+    }
+    
+    .rf-info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+    
+    .rf-section {
+      border: 1px solid var(--terminal-green-dark);
+      padding: 8px;
+      background: var(--terminal-bg-secondary);
+    }
+    
+    .rf-title {
+      color: var(--terminal-green);
+      font-size: 11px;
+      margin-bottom: 5px;
+      text-align: center;
+      border-bottom: 1px solid var(--terminal-green-dark);
+      padding-bottom: 3px;
+    }
+    
+    .rf-data {
+      font-size: 10px;
+      white-space: pre;
+      line-height: 1.3;
+      color: var(--terminal-green);
+    }
+    
+    .rf-dynamic-grid {
+      border: 1px solid var(--terminal-yellow);
+      padding: 8px;
+      margin-top: 10px;
+      background: rgba(255, 255, 0, 0.05);
+    }
+    
     /* Control Panel */
     .panel {
       position: absolute;
       top: 10px;
       left: 10px;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       padding: 10px;
       border: 1px solid var(--terminal-green);
       z-index: 1000;
@@ -222,7 +276,7 @@
       position: absolute;
       bottom: 20px;
       left: 10px;
-      background: rgba(0, 0, 0, 0.9);
+      background: rgba(0, 0, 0, 0.95);
       padding: 8px;
       border: 1px solid var(--terminal-green);
       z-index: 1000;
@@ -242,7 +296,7 @@
       border: 1px solid;
     }
     
-    /* Sidebar */
+    /* Right Sidebar */
     .sidebar {
       background: var(--terminal-bg);
       border: 1px solid var(--terminal-green);
@@ -289,7 +343,7 @@
       height: 120px;
       overflow-y: auto;
       background: var(--terminal-bg);
-      border: 1px solid var(--terminal-green);
+      border: 1px solid var(--terminal-green-dark);
       padding: 5px;
       font-size: 10px;
       font-family: 'JetBrains Mono', monospace;
@@ -404,10 +458,14 @@
     }
     
     /* Responsive */
-    @media (max-width: 1024px) {
-      .container {
+    @media (max-width: 1200px) {
+      .main-grid {
         grid-template-columns: 1fr;
-        grid-template-rows: 50vh auto;
+        grid-template-rows: auto auto;
+      }
+      
+      .rf-info-grid {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -418,69 +476,91 @@
     <div id="meta">[INITIALIZING...]</div>
   </header>
 
-  <div class="container">
-    <!-- Map -->
-    <div id="map-wrap">
-      <div id="map"></div>
-      
-      <!-- Control Panel -->
-      <div class="panel">
-        <div class="panel-title">╔═ CONTROL PANEL ═╗</div>
+  <div class="main-grid">
+    <!-- Left Column -->
+    <div class="left-column">
+      <!-- Map -->
+      <div id="map-wrap">
+        <div id="map"></div>
         
-        <div class="control-group">
-          <label>MIN_ELEVATION:</label>
-          <input id="elevMin" type="number" value="25" min="0" max="90" step="5">
+        <!-- Control Panel -->
+        <div class="panel">
+          <div class="panel-title">╔═ CONTROL PANEL ═╗</div>
+          
+          <div class="control-group">
+            <label>MIN_ELEVATION:</label>
+            <input id="elevMin" type="number" value="25" min="0" max="90" step="5">
+          </div>
+          
+          <div class="control-group">
+            <label>LATITUDE:</label>
+            <input id="lat" type="number" value="-27.588" step="0.001">
+          </div>
+          
+          <div class="control-group">
+            <label>LONGITUDE:</label>
+            <input id="lon" type="number" value="-48.613" step="0.001">
+          </div>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="considerRain" checked>
+            <label for="considerRain">RAIN_ATTENUATION</label>
+          </div>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="showFootprints" checked>
+            <label for="showFootprints">SHOW_FOOTPRINTS</label>
+          </div>
+          
+          <div class="checkbox-group">
+            <input type="checkbox" id="footprintOnlySelected">
+            <label for="footprintOnlySelected">FOOTPRINT_SELECTED_ONLY</label>
+          </div>
+          
+          <button id="btnApply">[APPLY_FILTERS]</button>
+          
+          <div id="visibleInfo">
+            <div class="terminal-text">CALCULATING...</div>
+          </div>
         </div>
         
-        <div class="control-group">
-          <label>LATITUDE:</label>
-          <input id="lat" type="number" value="-27.588" step="0.001">
-        </div>
-        
-        <div class="control-group">
-          <label>LONGITUDE:</label>
-          <input id="lon" type="number" value="-48.613" step="0.001">
-        </div>
-        
-        <div class="checkbox-group">
-          <input type="checkbox" id="considerRain" checked>
-          <label for="considerRain">RAIN_ATTENUATION</label>
-        </div>
-        
-        <div class="checkbox-group">
-          <input type="checkbox" id="showFootprints" checked>
-          <label for="showFootprints">SHOW_FOOTPRINTS</label>
-        </div>
-        
-        <button id="btnApply">[APPLY_FILTERS]</button>
-        
-        <div id="visibleInfo">
-          <div class="terminal-text">CALCULATING...</div>
+        <!-- Legend -->
+        <div class="legend">
+          <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00; border-color: #00ff00;"></div>
+            <span>VISIBLE</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ff00ff; border-color: #ff00ff;"></div>
+            <span>SELECTED</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
+            <span>SERVING</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00; border-color: #ffff00;"></div>
+            <span>CANDIDATE</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #004400; border-color: #004400;"></div>
+            <span>NOT_VISIBLE</span>
+          </div>
         </div>
       </div>
       
-      <!-- Legend -->
-      <div class="legend">
-        <div class="legend-item">
-          <div class="legend-color" style="background: #00ff00; border-color: #00ff00;"></div>
-          <span>VISIBLE</span>
+      <!-- RF System Info Area (Campo Vermelho) -->
+      <div class="rf-info-area">
+        <div id="rf-system-info">
+          <!-- Preenchido pelo JavaScript com informações RF do sistema -->
         </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
-          <span>SERVING</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ffff00; border-color: #ffff00;"></div>
-          <span>CANDIDATE</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #004400; border-color: #004400;"></div>
-          <span>NOT_VISIBLE</span>
+        <div id="rf-dynamic-info">
+          <!-- Preenchido pelo JavaScript com informações RF do satélite selecionado -->
         </div>
       </div>
     </div>
 
-    <!-- Sidebar -->
+    <!-- Right Sidebar -->
     <div class="sidebar">
       <!-- Terminal Output -->
       <div class="info-card">
