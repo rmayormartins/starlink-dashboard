@@ -531,7 +531,6 @@
             <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
             <button class="btn" onclick="toggleOrbitalMotion()">PAUSE ORBITS</button>
             <button class="btn" onclick="debugSatellites()">DEBUG SATS</button>
-            <button class="btn" onclick="createTestSatellites()">TEST SATS</button>
             <div style="margin-top: 10px;">
               <label class="control-label">Orbit Speed</label>
               <input type="range" id="orbitSpeed" min="1" max="100" value="10" style="width: 100%;">
@@ -559,7 +558,7 @@
           </div>
         </div>
         
-        <!-- System Log movido para cá -->
+        <!-- System Log -->
         <div class="panel-section">
           <div class="section-title">System Log</div>
           <div class="section-content" style="padding: 0;">
@@ -661,7 +660,7 @@
       </div>
     </div>
 
-    <!-- Right Panel - RF Analysis Only -->
+    <!-- Right Panel - RF Analysis -->
     <div class="right-panel">
       <!-- Satellite Data -->
       <div class="info-card">
@@ -703,11 +702,11 @@
           <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
             <div class="data-row">
               <span class="data-label">FREQ DL:</span>
-              <span class="data-value" id="rf-freq-dl">10.7-12.7 GHz</span>
+              <span class="data-value">10.7-12.7 GHz</span>
             </div>
             <div class="data-row">
               <span class="data-label">FREQ UL:</span>
-              <span class="data-value" id="rf-freq-ul">14.0-14.5 GHz</span>
+              <span class="data-value">14.0-14.5 GHz</span>
             </div>
             <div class="data-row">
               <span class="data-label">GATEWAY DL:</span>
@@ -719,7 +718,7 @@
             </div>
             <div class="data-row">
               <span class="data-label">MODULATION:</span>
-              <span class="data-value" id="rf-modulation">OFDMA</span>
+              <span class="data-value">OFDMA</span>
             </div>
             <div class="data-row">
               <span class="data-label">POLARIZATION:</span>
@@ -780,7 +779,7 @@
         </div>
       </div>
       
-      <!-- Antenna Parameters -->
+      <!-- User Terminal -->
       <div class="info-card">
         <div class="card-header">User Terminal (Dishy)</div>
         <div class="card-content">
@@ -834,6 +833,63 @@
 
   <!-- JavaScript -->
   <script>
+    // ==================== CONFIGURAÇÃO GLOBAL ====================
+    const DATA_URL = "data/starlink_tle.json";
+    const META_URL = "data/meta.json";
+    const REFRESH_MS = 3000;
+    
+    // TLEs de fallback válidos (Gen2 Starlink)
+    const FALLBACK_TLEs = [
+      {
+        "name": "STARLINK-30440",
+        "noradId": "57812",
+        "line1": "1 57812U 23126W   24219.25000000  .00000832  00000-0  73125-4 0  9995",
+        "line2": "2 57812  43.0010 315.8972 0.0003456 268.7432  91.3456 15.02531234 52348"
+      },
+      {
+        "name": "STARLINK-30441",
+        "noradId": "57813",
+        "line1": "1 57813U 23126X   24219.26000000  .00000945  00000-0  81234-4 0  9993",
+        "line2": "2 57813  43.0012 316.1234 0.0002987 269.1234  90.8765 15.02531456 52349"
+      },
+      {
+        "name": "STARLINK-30442",
+        "noradId": "57814",
+        "line1": "1 57814U 23126Y   24219.27000000  .00000756  00000-0  69876-4 0  9991",
+        "line2": "2 57814  43.0008 315.7654 0.0003789 268.9876  91.0123 15.02531678 52350"
+      },
+      {
+        "name": "STARLINK-30443",
+        "noradId": "57815",
+        "line1": "1 57815U 23126Z   24219.28000000  .00000634  00000-0  58901-4 0  9990",
+        "line2": "2 57815  43.0015 316.2345 0.0002456 269.3456  90.6543 15.02531890 52351"
+      },
+      {
+        "name": "STARLINK-30444",
+        "noradId": "57816",
+        "line1": "1 57816U 23126AA  24219.29000000  .00000723  00000-0  65432-4 0  9992",
+        "line2": "2 57816  43.0009 315.9876 0.0003123 268.8765  91.1234 15.02532102 52352"
+      },
+      {
+        "name": "STARLINK-31001",
+        "noradId": "58001",
+        "line1": "1 58001U 23127A   24219.30000000  .00000512  00000-0  52341-4 0  9994",
+        "line2": "2 58001  43.0020 325.1234 0.0002134 267.5678 92.4321 15.02530987 52360"
+      },
+      {
+        "name": "STARLINK-31002",
+        "noradId": "58002",
+        "line1": "1 58002U 23127B   24219.31000000  .00000623  00000-0  61234-4 0  9996",
+        "line2": "2 58002  43.0018 324.9876 0.0002567 268.1234 91.8765 15.02531123 52361"
+      },
+      {
+        "name": "STARLINK-31003",
+        "noradId": "58003",
+        "line1": "1 58003U 23127C   24219.32000000  .00000734  00000-0  72567-4 0  9998",
+        "line2": "2 58003  43.0016 324.7654 0.0002890 268.6789 91.3210 15.02531456 52362"
+      }
+    ];
+    
     // ==================== ESTADO GLOBAL ====================
     let currentView = 'map';
     let globe3D = null;
@@ -843,83 +899,97 @@
     let orbitalMotion = true;
     let orbitSpeedMultiplier = 10;
     let animationId = null;
-    let map = null;
-    let satelliteMarkers = [];
-    let selectedSatellite = null;
     
-    // TLEs REAIS do Starlink baseados em dados atuais (formato válido)
-    const starlinkTLEs = [
-      // STARLINK-30440 (Gen2)
-      ["STARLINK-30440", 
-       "1 57812U 23126W   24219.25000000  .00000832  00000-0  73125-4 0  9995",
-       "2 57812  43.0010 315.8972 0.0003456 268.7432  91.3456 15.02531234 52348"],
-      // STARLINK-30441 (Gen2)
-      ["STARLINK-30441",
-       "1 57813U 23126X   24219.26000000  .00000945  00000-0  81234-4 0  9993", 
-       "2 57813  43.0012 316.1234 0.0002987 269.1234  90.8765 15.02531456 52349"],
-      // STARLINK-30442 (Gen2)
-      ["STARLINK-30442",
-       "1 57814U 23126Y   24219.27000000  .00000756  00000-0  69876-4 0  9991",
-       "2 57814  43.0008 315.7654 0.0003789 268.9876  91.0123 15.02531678 52350"],
-      // STARLINK-30443 (Gen2)
-      ["STARLINK-30443", 
-       "1 57815U 23126Z   24219.28000000  .00000634  00000-0  58901-4 0  9990",
-       "2 57815  43.0015 316.2345 0.0002456 269.3456  90.6543 15.02531890 52351"],
-      // STARLINK-30444 (Gen2)
-      ["STARLINK-30444",
-       "1 57816U 23126AA  24219.29000000  .00000723  00000-0  65432-4 0  9992",
-       "2 57816  43.0009 315.9876 0.0003123 268.8765  91.1234 15.02532102 52352"]
-    ];
-    
-    // Satellite records
-    let satRecs = [];
     let tleList = [];
-    let obs = null;
+    let satRecs = [];
+    let map, layerGroup, footprintGroup;
+    let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
+    let selectedSatellite = null;
+    let isDrawing = false;
+    
+    let config = {
+      showFootprints: true,
+      maxFootprints: 5
+    };
     
     // ==================== INICIALIZAÇÃO ====================
     
-    function initApp() {
-      updateTerminalLog('SYSTEM', 'Initializing Starlink Tactical Operations...');
+    async function init() {
+      updateTerminalLog("SYSTEM", "Initializing Starlink Tactical Operations...");
       
-      // Parse TLE data
+      console.log(`%c
+╔═══════════════════════════════════════════╗
+║     STARLINK TACTICAL OPERATIONS         ║
+║         CENTRO OPERACIONAL TÁTICO        ║
+╚═══════════════════════════════════════════╝
+      `, "color: #00ff00; font-family: monospace");
+      
+      try {
+        await loadSatelliteData();
+        init2DMap();
+        setupControls();
+        setObserverLocation();
+        startSimulation();
+        updateTerminalLog("SYSTEM", "TACTICAL OPERATIONS CENTER ONLINE");
+      } catch (e) {
+        updateTerminalLog("ERROR", `Critical failure: ${e.message}`);
+      }
+    }
+    
+    async function loadSatelliteData() {
+      updateTerminalLog("DATA", "Loading satellite orbital elements...");
+      
+      try {
+        // Tentar carregar dados externos primeiro
+        const dataResponse = await fetch(DATA_URL);
+        if (dataResponse.ok) {
+          tleList = await dataResponse.json();
+          updateTerminalLog("DATA", `${tleList.length} TLEs loaded from external source`);
+          
+          // Tentar carregar metadados
+          try {
+            const metaResponse = await fetch(META_URL);
+            if (metaResponse.ok) {
+              const meta = await metaResponse.json();
+              updateTerminalLog("DATA", `Metadata: ${meta.count} satellites, source: ${meta.source}`);
+            }
+          } catch (e) {
+            updateTerminalLog("WARNING", "Metadata not available");
+          }
+        } else {
+          throw new Error("External data not available");
+        }
+        
+      } catch (e) {
+        updateTerminalLog("WARNING", `External data unavailable: ${e.message}`);
+        updateTerminalLog("DATA", "Switching to tactical fallback constellation...");
+        
+        tleList = FALLBACK_TLEs;
+        updateTerminalLog("DATA", `${tleList.length} tactical satellites loaded from fallback`);
+      }
+      
+      // Processar TLEs
+      updateTerminalLog("CALC", "Processing orbital elements with SGP4...");
       parseTLEData();
-      
-      // Initialize 2D map
-      init2DMap();
-      
-      // Set observer location
-      setObserverLocation();
-      
-      // Start simulation
-      startSimulation();
-      
-      // Setup controls
-      setupControls();
-      
-      updateTerminalLog('SYSTEM', 'Tactical Operations Center online');
     }
     
     function parseTLEData() {
-      updateTerminalLog('TLE', 'Parsing satellite data...');
-      
-      // Clear existing data
       satRecs = [];
-      tleList = [];
+      let validCount = 0;
       
-      starlinkTLEs.forEach((tle, index) => {
+      tleList.forEach((tle, index) => {
         try {
-          updateTerminalLog('TLE', `Parsing satellite ${index}: ${tle[0]}`);
-          
-          // Validate TLE lines
-          if (tle[1].length !== 69 || tle[2].length !== 69) {
-            updateTerminalLog('TLE', `Invalid TLE length for ${tle[0]}`);
+          if (!tle.line1 || !tle.line2) {
+            updateTerminalLog("TLE", `Invalid TLE format for ${tle.name || index}`);
+            satRecs.push(null);
             return;
           }
           
-          const satrec = satellite.twoline2satrec(tle[1], tle[2]);
+          const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
           
           if (satrec.error) {
-            updateTerminalLog('TLE', `TLE parse error for ${tle[0]}: ${satrec.error}`);
+            updateTerminalLog("TLE", `SGP4 error for ${tle.name}: ${satrec.error}`);
+            satRecs.push(null);
             return;
           }
           
@@ -928,56 +998,73 @@
           const testResult = satellite.propagate(satrec, testTime);
           
           if (!testResult.position || isNaN(testResult.position.x)) {
-            updateTerminalLog('TLE', `Propagation test failed for ${tle[0]}`);
+            updateTerminalLog("TLE", `Propagation failed for ${tle.name}`);
+            satRecs.push(null);
             return;
           }
           
           satRecs.push(satrec);
-          tleList.push({
-            name: tle[0],
-            line1: tle[1],
-            line2: tle[2]
-          });
-          
-          updateTerminalLog('TLE', `✓ ${tle[0]} loaded successfully`);
+          validCount++;
+          updateTerminalLog("TLE", `✓ ${tle.name} orbital mechanics verified`);
           
         } catch (e) {
-          updateTerminalLog('TLE', `Error parsing ${tle[0]}: ${e.message}`);
+          updateTerminalLog("TLE", `Error processing ${tle.name}: ${e.message}`);
+          satRecs.push(null);
         }
       });
       
-      updateTerminalLog('TLE', `${satRecs.length}/${starlinkTLEs.length} satellites loaded`);
-      updateStats(0, 0, satRecs.length);
+      updateTerminalLog("CALC", `${validCount}/${tleList.length} satellites ready for tracking`);
+      updateStats(0, 0, validCount);
     }
     
     function init2DMap() {
-      updateTerminalLog('MAP', 'Initializing 2D map...');
+      updateTerminalLog("MAP", "Initializing tactical map system...");
       
-      map = L.map('map', {
-        center: [-27.588, -48.613],
-        zoom: 4,
+      map = L.map("map", { 
+        worldCopyJump: true,
+        preferCanvas: true,
+        renderer: L.canvas(),
         zoomControl: false
-      });
+      }).setView([obs.lat, obs.lon], 3);
       
-      // Dark tile layer - usando OpenStreetMap (gratuito)
+      // Dark tactical map
       L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        attribution: '© TACTICAL MAP',
         subdomains: 'abcd',
-        maxZoom: 20,
+        maxZoom: 10,
+        minZoom: 2
       }).addTo(map);
+      
+      // Layer groups
+      layerGroup = L.layerGroup().addTo(map);
+      footprintGroup = L.layerGroup().addTo(map);
       
       // Observer location marker
       const observerIcon = L.divIcon({
-        className: 'observer-marker',
         html: '<div style="width: 12px; height: 12px; background: #ff0000; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 10px #ff0000;"></div>',
         iconSize: [16, 16],
         iconAnchor: [8, 8]
       });
       
-      L.marker([-27.588, -48.613], { icon: observerIcon }).addTo(map)
-        .bindPopup('TACTICAL BASE<br>Campinas, SC');
+      L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
+        .bindPopup('<strong>TACTICAL BASE</strong><br>Campinas, SC<br>Status: OPERATIONAL');
       
-      updateTerminalLog('MAP', '2D map initialized');
+      updateTerminalLog("MAP", "Tactical map system online");
+    }
+    
+    function setupControls() {
+      document.getElementById("btnApply").addEventListener('click', () => {
+        setObserverLocation();
+        updateSatellites();
+        updateTerminalLog("CMD", "Tactical parameters updated");
+      });
+      
+      // Checkbox controls
+      document.getElementById("showFootprints").addEventListener('change', (e) => {
+        config.showFootprints = e.target.checked;
+        updateTerminalLog("CONFIG", `Footprints ${config.showFootprints ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
     }
     
     function setObserverLocation() {
@@ -985,14 +1072,8 @@
       const lon = parseFloat(document.getElementById('lon').value);
       const elevMin = parseFloat(document.getElementById('elevMin').value);
       
-      // Validate inputs
       if (isNaN(lat) || isNaN(lon) || isNaN(elevMin)) {
-        updateTerminalLog('OBS', 'Invalid coordinates entered');
-        return;
-      }
-      
-      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-        updateTerminalLog('OBS', 'Coordinates out of range');
+        updateTerminalLog('OBS', 'Invalid tactical coordinates');
         return;
       }
       
@@ -1003,26 +1084,25 @@
         height: 0
       };
       
-      // Update map center
       if (map) {
         map.setView([lat, lon], map.getZoom());
       }
       
-      updateTerminalLog('OBS', `Observer: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°, Min Elev: ${elevMin}°`);
+      updateTerminalLog('OBS', `Tactical position: ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°W, Elev>${elevMin}°`);
     }
     
-    // ==================== SIMULAÇÃO ====================
-    
     function startSimulation() {
-      updateTerminalLog('SIM', 'Starting real-time simulation...');
+      updateTerminalLog('SIM', 'Starting real-time orbital tracking...');
       
-      // Update satellites every second
+      // Main update loop
       setInterval(() => {
-        updateSatellites();
-        updateRFAnalysis();
-      }, 1000);
+        if (!isDrawing) {
+          updateSatellites();
+          updateRFAnalysis();
+        }
+      }, REFRESH_MS);
       
-      // Update plots every 5 seconds
+      // Plot updates
       setInterval(updatePlots, 5000);
       
       // Initial update
@@ -1031,86 +1111,187 @@
       updatePlots();
     }
     
+    // ==================== CÁLCULOS DE SATÉLITE ====================
+    
+    function getSatState(rec, time = new Date()) {
+      try {
+        if (!rec) return null;
+        
+        const gmst = satellite.gstime(time);
+        const pv = satellite.propagate(rec, time);
+        
+        if (!pv || !pv.position || pv.position === false) return null;
+        
+        const eci = pv.position;
+        const vel = pv.velocity || {x: 0, y: 0, z: 0};
+        const gd = satellite.eciToGeodetic(eci, gmst);
+        
+        const lat = satellite.radiansToDegrees(gd.latitude);
+        const lon = satellite.radiansToDegrees(gd.longitude);
+        const alt = gd.height;
+        
+        const speed = Math.sqrt(vel.x**2 + vel.y**2 + vel.z**2);
+        
+        // Calculate look angles from observer
+        const obsGd = {
+          latitude: satellite.degreesToRadians(obs.lat),
+          longitude: satellite.degreesToRadians(obs.lon),
+          height: 0
+        };
+        
+        const satEcf = satellite.eciToEcf(eci, gmst);
+        const look = satellite.ecfToLookAngles(obsGd, satEcf);
+        
+        const az = satellite.radiansToDegrees(look.azimuth);
+        const el = satellite.radiansToDegrees(look.elevation);
+        const range = look.rangeSat;
+        
+        return { lat, lon, alt, az, el, range, speed };
+      } catch (err) {
+        return null;
+      }
+    }
+    
+    function calculateLinkBudget(elevationDeg, range) {
+      const FREQ = 12e9; // Hz (Ku-band downlink)
+      const EIRP = 35; // dBW (satellite EIRP)
+      const GAIN = 33; // dBi (user terminal gain)
+      
+      // Free space path loss
+      const c = 3e8; // speed of light
+      const FSPL = 20 * Math.log10(4 * Math.PI * range * 1000 * FREQ / c);
+      
+      // Atmospheric losses (higher at low elevations)
+      const atmosLoss = elevationDeg < 20 ? (20 - elevationDeg) * 0.5 : 0;
+      
+      const rxPower = EIRP + GAIN - FSPL - atmosLoss;
+      
+      // Calculate SNR
+      const noiseTemp = 150; // K (system noise temperature)
+      const bandwidth = 250e6; // Hz
+      const noisePower = 10 * Math.log10(1.38e-23 * noiseTemp * bandwidth * 1000); // dBm
+      const SNR = rxPower - noisePower;
+      
+      return { SNR, rxPower, FSPL };
+    }
+    
+    // ==================== ATUALIZAÇÃO DE SATÉLITES ====================
+    
     function updateSatellites() {
-      if (!obs || satRecs.length === 0) return;
+      if (isDrawing) return;
+      isDrawing = true;
       
-      const currentTime = new Date();
-      let visibleCount = 0;
-      let trackedCount = 0;
+      const startTime = performance.now();
       
-      // Clear existing markers
-      satelliteMarkers.forEach(marker => map.removeLayer(marker));
-      satelliteMarkers = [];
+      layerGroup.clearLayers();
+      footprintGroup.clearLayers();
       
-      satRecs.forEach((satrec, index) => {
-        try {
-          const positionAndVelocity = satellite.propagate(satrec, currentTime);
-          if (!positionAndVelocity.position) return;
-          
-          const gmst = satellite.gstime(currentTime);
-          const positionGd = satellite.eciToGeodetic(positionAndVelocity.position, gmst);
-          
-          const lat = satellite.radiansToDegrees(positionGd.latitude);
-          const lon = satellite.radiansToDegrees(positionGd.longitude);
-          const alt = positionGd.height;
-          
-          // Calculate look angles
-          const observerGd = {
-            latitude: satellite.degreesToRadians(obs.lat),
-            longitude: satellite.degreesToRadians(obs.lon),
-            height: obs.height
-          };
-          
-          const positionEcf = satellite.eciToEcf(positionAndVelocity.position, gmst);
-          const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
-          
-          const elevation = satellite.radiansToDegrees(lookAngles.elevation);
-          const azimuth = satellite.radiansToDegrees(lookAngles.azimuth);
-          const range = lookAngles.rangeSat;
-          
-          const isVisible = elevation >= obs.elevMin;
-          
-          if (isVisible) {
-            visibleCount++;
-            trackedCount++;
-            
-            // Create satellite marker
-            const satIcon = L.divIcon({
-              className: 'satellite-marker',
-              html: `<div style="width: 8px; height: 8px; background: #00ff00; border: 1px solid #ffffff; border-radius: 50%; box-shadow: 0 0 8px #00ff00;"></div>`,
-              iconSize: [10, 10],
-              iconAnchor: [5, 5]
-            });
-            
-            const marker = L.marker([lat, lon], { icon: satIcon }).addTo(map);
-            marker.bindPopup(`
-              <strong>${tleList[index].name}</strong><br>
-              Elevation: ${elevation.toFixed(1)}°<br>
-              Azimuth: ${azimuth.toFixed(1)}°<br>
-              Range: ${(range/1000).toFixed(0)} km<br>
-              Altitude: ${alt.toFixed(0)} km
-            `);
-            
-            marker.on('click', () => selectSatellite(index, elevation, azimuth, range, alt));
-            satelliteMarkers.push(marker);
-          }
-          
-        } catch (e) {
-          // Silently handle propagation errors
+      let visible = 0;
+      let drawn = 0;
+      
+      for (let i = 0; i < tleList.length; i++) {
+        const t = tleList[i];
+        const rec = satRecs[i];
+        
+        if (!rec) continue;
+        
+        const st = getSatState(rec);
+        if (!st) continue;
+        
+        const isVisible = st.el >= obs.elevMin;
+        
+        // Tactical color scheme
+        let color = '#004400'; // Dark green: not visible
+        let radius = 2;
+        let opacity = 0.3;
+        
+        if (isVisible) {
+          color = '#00ff00'; // Bright green: visible
+          radius = 4;
+          opacity = 0.9;
+          visible++;
         }
-      });
+        
+        const marker = L.circleMarker([st.lat, st.lon], {
+          radius: radius,
+          weight: 1,
+          color: color,
+          fillColor: color,
+          fillOpacity: opacity,
+          opacity: opacity + 0.1
+        });
+        
+        const linkBudget = calculateLinkBudget(st.el, st.range);
+        
+        marker.bindPopup(`
+          <div style="color: #00ff00; font-family: 'Share Tech Mono', monospace; font-size: 11px;">
+            <strong>${t.name || "TACTICAL_SAT"}</strong><br>
+            NORAD_ID: ${t.noradId}<br>
+            ALTITUDE: ${st.alt.toFixed(0)} km<br>
+            ELEVATION: ${st.el.toFixed(1)}°<br>
+            AZIMUTH: ${st.az.toFixed(1)}°<br>
+            RANGE: ${(st.range/1000).toFixed(0)} km<br>
+            SNR: ${linkBudget.SNR.toFixed(1)} dB<br>
+            STATUS: ${isVisible ? 'VISIBLE' : 'BELOW_HORIZON'}
+          </div>
+        `);
+        
+        marker.on('click', () => selectSatellite(i, st.el, st.az, st.range, st.alt));
+        marker.addTo(layerGroup);
+        drawn++;
+        
+        // Footprints for visible satellites
+        if (config.showFootprints && isVisible && visible <= config.maxFootprints) {
+          const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
+          L.circle([st.lat, st.lon], {
+            radius: footprintRadius * 1000,
+            color: '#00ff00',
+            weight: 2,
+            opacity: 0.6,
+            fillColor: '#00ff00',
+            fillOpacity: 0.1,
+            interactive: false,
+            dashArray: '5,10'
+          }).addTo(footprintGroup);
+        }
+      }
       
-      updateStats(visibleCount, trackedCount, satRecs.length);
+      const elapsed = performance.now() - startTime;
       
       // Update mission status
-      document.querySelector('#visibleInfo .data-value').textContent = 'OPERATIONAL';
+      document.getElementById("visibleInfo").innerHTML = `
+        <div class="data-row">
+          <span class="data-label">STATUS:</span>
+          <span class="data-value good">OPERATIONAL</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">RENDER:</span>
+          <span class="data-value">${elapsed.toFixed(0)} ms</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">LINK:</span>
+          <span class="data-value good">ACTIVE</span>
+        </div>
+      `;
+      
+      updateStats(visible, drawn, satRecs.filter(r => r !== null).length);
+      isDrawing = false;
+    }
+    
+    function calculateFootprintRadius(altKm, elevMinDeg) {
+      const Re = 6371; // Earth radius km
+      const h = altKm;
+      const e = elevMinDeg * Math.PI / 180;
+      const psi = Math.acos((Re/(Re+h)) * Math.cos(e)) - e;
+      return Re * psi;
     }
     
     function selectSatellite(index, elevation, azimuth, range, altitude) {
       selectedSatellite = index;
       
-      // Update target info overlay
+      // Update target overlay
       const targetInfo = document.getElementById('targetInfo');
+      const linkBudget = calculateLinkBudget(elevation, range);
       
       targetInfo.innerHTML = `
         <div class="data-row">
@@ -1130,25 +1311,22 @@
           <span class="data-value">${(range/1000).toFixed(0)} km</span>
         </div>
         <div class="data-row">
-          <span class="data-label">ALT:</span>
-          <span class="data-value">${altitude.toFixed(0)} km</span>
+          <span class="data-label">SNR:</span>
+          <span class="data-value">${linkBudget.SNR.toFixed(1)} dB</span>
         </div>
       `;
       
-      // Update satellite info panel with calculated parameters
       updateSatelliteInfo(index, elevation, azimuth, range);
-      
-      // Update RF analysis for selected satellite
       updateRFAnalysis();
       
-      updateTerminalLog('TGT', `Selected ${tleList[index].name} - El:${elevation.toFixed(1)}° Az:${azimuth.toFixed(1)}° Range:${(range/1000).toFixed(0)}km`);
+      updateTerminalLog('TGT', `Target acquired: ${tleList[index].name} - El:${elevation.toFixed(1)}° Az:${azimuth.toFixed(1)}°`);
     }
     
     function updateSatelliteInfo(index, elevation, azimuth, range) {
       const satInfo = document.getElementById('sat-info');
       
       if (!satRecs[index] || !tleList[index]) {
-        updateTerminalLog('SAT', 'Invalid satellite index');
+        updateTerminalLog('SAT', 'Invalid satellite selection');
         return;
       }
       
@@ -1157,33 +1335,23 @@
         const positionAndVelocity = satellite.propagate(satRecs[index], currentTime);
         
         if (!positionAndVelocity.position || !positionAndVelocity.velocity) {
-          updateTerminalLog('SAT', 'Failed to get satellite state vectors');
+          updateTerminalLog('SAT', 'Failed to calculate orbital state');
           return;
         }
         
-        // Calculate orbital parameters
         const position = positionAndVelocity.position;
         const velocity = positionAndVelocity.velocity;
         
-        // Calculate altitude from position magnitude
-        const earthRadius = 6371; // km
+        const earthRadius = 6371;
         const altitude = Math.sqrt(position.x*position.x + position.y*position.y + position.z*position.z) - earthRadius;
-        
-        // Calculate velocity magnitude
         const speed = Math.sqrt(velocity.x*velocity.x + velocity.y*velocity.y + velocity.z*velocity.z);
         
-        // Calculate Doppler shift for 12 GHz downlink
-        const frequency = 12e9; // Hz
-        const c = 3e8; // speed of light m/s
+        // Doppler shift calculation for 12 GHz
+        const frequency = 12e9;
+        const c = 3e8;
+        const dopplerShift = (speed * 1000 / c) * frequency;
         
-        // Simplified Doppler calculation (radial velocity component)
-        // In reality this would need the satellite-to-observer vector
-        const dopplerShift = (speed * 1000 / c) * frequency; // Hz
-        
-        // Orbital period for LEO satellites (approximately)
-        const period = 95.5; // minutes (typical for Starlink altitude)
-        
-        // Extract NORAD catalog number from TLE
+        const period = 95.5; // minutes (typical Starlink period)
         const noradId = tleList[index].line1.substring(2, 7);
         
         satInfo.innerHTML = `
@@ -1211,48 +1379,29 @@
             <span class="sat-info-label">PERIOD</span>
             <span class="sat-info-value">${period.toFixed(1)} min</span>
           </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">ELEVATION</span>
-            <span class="sat-info-value">${elevation.toFixed(1)}°</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">AZIMUTH</span>
-            <span class="sat-info-value">${azimuth.toFixed(1)}°</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">RANGE</span>
-            <span class="sat-info-value">${(range/1000).toFixed(0)} km</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">GEN</span>
-            <span class="sat-info-value">Gen2</span>
-          </div>
         `;
         
-        updateTerminalLog('SAT', `Updated info for ${tleList[index].name}: Alt=${altitude.toFixed(0)}km, Vel=${speed.toFixed(2)}km/s`);
-        
       } catch (e) {
-        updateTerminalLog('SAT', `Error calculating satellite parameters: ${e.message}`);
+        updateTerminalLog('SAT', `Error calculating parameters: ${e.message}`);
       }
     }
     
+    // ==================== ANÁLISE RF ====================
+    
     function updateRFAnalysis() {
-      if (!selectedSatellite || selectedSatellite >= satellites3D.length) {
-        // Default values when no satellite selected
+      if (selectedSatellite === null || !satRecs[selectedSatellite]) {
         document.getElementById('rf-snr').textContent = '---';
         document.getElementById('rf-rssi').textContent = '---';
         document.getElementById('rf-status').textContent = 'NO LINK';
         document.getElementById('rf-status').className = 'data-value critical';
+        document.getElementById('antenna-pointing').textContent = 'SEARCH';
+        document.getElementById('antenna-status').textContent = 'STANDBY';
         return;
       }
       
-      // Get selected satellite data
-      const sat = satellites3D[selectedSatellite];
-      if (!sat || !sat.userData.rec || !obs) return;
-      
       try {
         const currentTime = new Date();
-        const positionAndVelocity = satellite.propagate(sat.userData.rec, currentTime);
+        const positionAndVelocity = satellite.propagate(satRecs[selectedSatellite], currentTime);
         
         if (!positionAndVelocity.position) return;
         
@@ -1267,46 +1416,25 @@
         const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
         
         const elevation = satellite.radiansToDegrees(lookAngles.elevation);
-        const range = lookAngles.rangeSat; // km
+        const range = lookAngles.rangeSat;
         
-        // Calculate realistic RF parameters based on elevation and range
-        const elevRad = satellite.degreesToRadians(elevation);
+        const linkBudget = calculateLinkBudget(elevation, range);
         
-        // Free space path loss (FSPL) for 12 GHz
-        const frequency = 12e9; // Hz
-        const c = 3e8; // speed of light
-        const fspl = 20 * Math.log10(4 * Math.PI * range * 1000 * frequency / c);
+        document.getElementById('rf-snr').textContent = `${linkBudget.SNR.toFixed(1)} dB`;
+        document.getElementById('rf-rssi').textContent = `${linkBudget.rxPower.toFixed(1)} dBm`;
         
-        // Atmospheric losses (more at low elevations)
-        const atmosLoss = elevation < 20 ? (20 - elevation) * 0.5 : 0;
-        
-        // Calculate received signal strength (simplified)
-        const txPower = 30; // dBW (satellite EIRP)
-        const rxGain = 35; // dBi (user terminal gain)
-        const rssi = txPower + rxGain - fspl - atmosLoss;
-        
-        // Calculate SNR based on system parameters
-        const noiseTemp = 150; // K (system noise temperature)
-        const bandwidth = 250e6; // Hz
-        const noisePower = 10 * Math.log10(1.38e-23 * noiseTemp * bandwidth * 1000); // dBm
-        const snr = rssi - noisePower;
-        
-        // Update displays
-        document.getElementById('rf-snr').textContent = `${snr.toFixed(1)} dB`;
-        document.getElementById('rf-rssi').textContent = `${rssi.toFixed(1)} dBm`;
-        
-        // Determine link quality
+        // Link status determination
         let status, statusClass;
-        if (elevation < 25) {
-          status = 'BLOCKED';
+        if (elevation < obs.elevMin) {
+          status = 'BELOW HORIZON';
           statusClass = 'critical';
-        } else if (snr > 15) {
+        } else if (linkBudget.SNR > 20) {
           status = 'EXCELLENT';
           statusClass = 'good';
-        } else if (snr > 10) {
+        } else if (linkBudget.SNR > 15) {
           status = 'GOOD';
           statusClass = 'good';
-        } else if (snr > 5) {
+        } else if (linkBudget.SNR > 10) {
           status = 'MARGINAL';
           statusClass = 'warning';
         } else {
@@ -1317,79 +1445,49 @@
         document.getElementById('rf-status').textContent = status;
         document.getElementById('rf-status').className = `data-value ${statusClass}`;
         
-        // Update antenna status
+        // Antenna status
         document.getElementById('antenna-pointing').textContent = `${elevation.toFixed(1)}° EL`;
-        document.getElementById('antenna-status').textContent = elevation > 25 ? 'TRACKING' : 'SEARCHING';
-        document.getElementById('antenna-status').className = elevation > 25 ? 'data-value good' : 'data-value warning';
-        
-        // Update RF frequencies based on link type and generation
-        if (selectedSatellite !== null) {
-          // Gen2 satellites use standard Ku-band frequencies
-          document.getElementById('rf-freq-dl').textContent = '10.7-12.7 GHz';
-          document.getElementById('rf-freq-ul').textContent = '14.0-14.5 GHz';
-        }
+        document.getElementById('antenna-status').textContent = elevation > obs.elevMin ? 'TRACKING' : 'SEARCH';
+        document.getElementById('antenna-status').className = elevation > obs.elevMin ? 'data-value good' : 'data-value warning';
         
       } catch (e) {
-        updateTerminalLog('RF', `Error calculating RF parameters: ${e.message}`);
+        updateTerminalLog('RF', `Error in RF analysis: ${e.message}`);
       }
     }
     
     function updatePlots() {
-      // Generate more realistic plots based on selected satellite
+      if (typeof Plotly === 'undefined') return;
+      
       const timePoints = 50;
       const snrData = [];
       const constData = [];
       
-      // If satellite is selected, use more realistic data
-      if (selectedSatellite !== null && satellites3D[selectedSatellite]) {
-        const sat = satellites3D[selectedSatellite];
+      // Generate realistic SNR time series
+      for (let i = 0; i < timePoints; i++) {
+        const time = i * 2;
+        const baseSNR = 25;
+        const scintillation = 2 * Math.sin(i * 0.3) * Math.random();
+        const trend = 3 * Math.exp(-i * 0.05);
         
-        // Generate SNR time series based on satellite movement
-        for (let i = 0; i < timePoints; i++) {
-          const time = i * 2; // 2 second intervals
-          
-          // Simulate SNR variation based on atmospheric scintillation and movement
-          const baseSNR = 25;
-          const scintillation = 2 * Math.sin(i * 0.3) * Math.random();
-          const fade = 3 * Math.exp(-i * 0.05); // Gradual fade simulation
-          
-          snrData.push({
-            x: time,
-            y: baseSNR + scintillation + fade
-          });
-        }
-        
-        // Generate constellation points for OFDMA (more complex than QAM)
-        for (let i = 0; i < 200; i++) {
-          // Simulate OFDMA constellation with noise
-          const baseI = Math.round(Math.random() * 4 - 2);
-          const baseQ = Math.round(Math.random() * 4 - 2);
-          
-          const noise = 0.1;
-          constData.push({
-            x: baseI + (Math.random() - 0.5) * noise,
-            y: baseQ + (Math.random() - 0.5) * noise
-          });
-        }
-      } else {
-        // Default data when no satellite selected
-        for (let i = 0; i < timePoints; i++) {
-          snrData.push({
-            x: i * 2,
-            y: 20 + 3 * Math.sin(i * 0.2) + Math.random() * 2
-          });
-        }
-        
-        // Default constellation (QPSK-like)
-        for (let i = 0; i < 100; i++) {
-          constData.push({
-            x: Math.round(Math.random() * 2 - 1) + (Math.random() - 0.5) * 0.2,
-            y: Math.round(Math.random() * 2 - 1) + (Math.random() - 0.5) * 0.2
-          });
-        }
+        snrData.push({
+          x: time,
+          y: baseSNR + scintillation + trend
+        });
       }
       
-      // SNR Time Plot
+      // Generate constellation points for OFDMA
+      for (let i = 0; i < 200; i++) {
+        const baseI = Math.round(Math.random() * 4 - 2);
+        const baseQ = Math.round(Math.random() * 4 - 2);
+        const noise = 0.1;
+        
+        constData.push({
+          x: baseI + (Math.random() - 0.5) * noise,
+          y: baseQ + (Math.random() - 0.5) * noise
+        });
+      }
+      
+      // SNR Plot
       Plotly.newPlot('snrPlot', [{
         x: snrData.map(d => d.x),
         y: snrData.map(d => d.y),
@@ -1406,7 +1504,6 @@
         xaxis: { 
           gridcolor: '#333333', 
           title: 'Time (s)', 
-          range: [0, timePoints * 2],
           tickfont: { size: 10 }
         },
         yaxis: { 
@@ -1419,7 +1516,7 @@
         showlegend: false
       }, { displayModeBar: false });
       
-      // Constellation Diagram
+      // Constellation Plot
       Plotly.newPlot('constPlot', [{
         x: constData.map(d => d.x),
         y: constData.map(d => d.y),
@@ -1459,63 +1556,43 @@
       const container = document.getElementById('globe');
       if (!container) return;
       
-      updateTerminalLog('3D', 'Initializing 3D globe...');
+      updateTerminalLog('3D', 'Initializing tactical 3D display...');
       
-      // Scene
       scene3D = new THREE.Scene();
       scene3D.fog = new THREE.Fog(0x000011, 15000, 25000);
       
-      // Camera - posição melhor para ver Terra e satélites
       const aspect = container.clientWidth / container.clientHeight;
       camera3D = new THREE.PerspectiveCamera(45, aspect, 1, 50000);
       camera3D.position.set(12000, 8000, 12000);
       camera3D.lookAt(0, 0, 0);
       
-      // Renderer
       renderer3D = new THREE.WebGLRenderer({ 
         antialias: true,
         alpha: true
       });
       renderer3D.setSize(container.clientWidth, container.clientHeight);
       renderer3D.setClearColor(0x000011, 1);
-      renderer3D.shadowMap.enabled = true;
-      renderer3D.shadowMap.type = THREE.PCFSoftShadowMap;
       container.appendChild(renderer3D.domElement);
       
-      // Lights
       const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
       scene3D.add(ambientLight);
       
       const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
       directionalLight.position.set(15000, 10000, 15000);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
       scene3D.add(directionalLight);
       
-      // Earth
       createEarth();
-      
-      // Create 3D satellites
       create3DSatellites();
-      
-      // Setup controls
       setupGlobeControls();
       
-      // Mark as initialized
       globe3D = true;
-      
-      // Start animation
       animate3D();
       
-      updateTerminalLog('3D', '3D globe initialized successfully');
+      updateTerminalLog('3D', 'Tactical 3D display online');
     }
     
     function createEarth() {
-      // Earth sphere
       const earthGeometry = new THREE.SphereGeometry(6371, 64, 64);
-      
-      // Earth material with better visibility
       const earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x2244aa,
         emissive: 0x112244,
@@ -1527,10 +1604,9 @@
       });
       
       earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
-      earthMesh.receiveShadow = true;
       scene3D.add(earthMesh);
       
-      // Earth wireframe overlay for better visibility
+      // Wireframe overlay
       const wireframeGeometry = new THREE.SphereGeometry(6371, 32, 16);
       const wireframeMaterial = new THREE.MeshBasicMaterial({
         color: 0x00aa00,
@@ -1541,19 +1617,7 @@
       const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
       earthMesh.add(wireframeMesh);
       
-      // Equator ring
-      const ringGeometry = new THREE.RingGeometry(6371, 6380, 64);
-      const ringMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.6
-      });
-      const equatorRing = new THREE.Mesh(ringGeometry, ringMaterial);
-      equatorRing.rotation.x = Math.PI / 2;
-      scene3D.add(equatorRing);
-      
-      // Observer location marker
+      // Observer location
       const markerGeometry = new THREE.SphereGeometry(50, 8, 8);
       const markerMaterial = new THREE.MeshBasicMaterial({
         color: 0xff0000,
@@ -1562,10 +1626,9 @@
       });
       const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
       
-      // Convert lat/lon to 3D position
-      const lat = -27.588 * Math.PI / 180;
-      const lon = -48.613 * Math.PI / 180;
-      const radius = 6371 + 20; // Slightly above surface
+      const lat = obs.lat * Math.PI / 180;
+      const lon = obs.lon * Math.PI / 180;
+      const radius = 6371 + 20;
       
       observerMarker.position.x = radius * Math.cos(lat) * Math.cos(lon);
       observerMarker.position.y = radius * Math.sin(lat);
@@ -1575,65 +1638,45 @@
     }
     
     function create3DSatellites() {
-      if (satRecs.length === 0) {
-        updateTerminalLog('3D', 'No valid satellites to create');
+      if (satRecs.filter(r => r !== null).length === 0) {
+        updateTerminalLog('3D', 'No valid satellites for 3D display');
         setTimeout(create3DSatellites, 2000);
         return;
       }
       
-      updateTerminalLog('3D', `Creating ${satRecs.length} 3D satellites...`);
+      updateTerminalLog('3D', `Creating ${satRecs.filter(r => r !== null).length} tactical 3D objects...`);
       
       // Clear existing satellites
       satellites3D.forEach(sat => {
-        if (sat.parent) {
-          sat.parent.remove(sat);
-        }
-        if (sat.material) {
-          sat.material.dispose();
-        }
-        if (sat.geometry) {
-          sat.geometry.dispose();
-        }
+        if (sat.parent) sat.parent.remove(sat);
+        if (sat.material) sat.material.dispose();
+        if (sat.geometry) sat.geometry.dispose();
       });
       satellites3D = [];
       
-      // Satellite geometry - MUITO MAIOR para visibilidade
       const satGeometry = new THREE.SphereGeometry(200, 12, 12);
       
       satRecs.forEach((satrec, index) => {
+        if (!satrec) return;
+        
         try {
-          // Create material for each satellite
           const material = new THREE.MeshBasicMaterial({
             color: new THREE.Color(0x00ff00),
             transparent: false,
             opacity: 1.0
           });
-          
-          // Add emissive property
           material.emissive = new THREE.Color(0x00ff00);
           material.emissiveIntensity = 0.8;
           
           const satellite = new THREE.Mesh(satGeometry, material);
-          
-          // Store data
           satellite.userData = { 
             index: index,
             tle: tleList[index],
             rec: satrec,
-            material: material  // Store reference for safety
+            material: material
           };
           
-          // Add a glow effect
-          const glowGeometry = new THREE.SphereGeometry(250, 8, 8);
-          const glowMaterial = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x00ff00),
-            transparent: true,
-            opacity: 0.3
-          });
-          const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-          satellite.add(glow);
-          
-          // Test initial position calculation
+          // Initial position calculation
           const testTime = new Date();
           const testResult = satellite.propagate(satrec, testTime);
           
@@ -1643,79 +1686,48 @@
               testResult.position.z,
               -testResult.position.y
             );
-            updateTerminalLog('3D', `✓ Satellite ${index}: ${tleList[index].name} created at ${testResult.position.x.toFixed(0)}, ${testResult.position.y.toFixed(0)}, ${testResult.position.z.toFixed(0)}`);
           } else {
-            // Fallback position for debug
-            satellite.position.set(
-              8000 + index * 1000,
-              2000,
-              2000
-            );
-            updateTerminalLog('3D', `⚠ Satellite ${index}: ${tleList[index].name} - using fallback position`);
+            satellite.position.set(8000 + index * 1000, 2000, 2000);
           }
           
           scene3D.add(satellite);
           satellites3D.push(satellite);
           
         } catch (e) {
-          updateTerminalLog('3D', `Error creating satellite ${index}: ${e.message}`);
+          updateTerminalLog('3D', `Error creating 3D object ${index}: ${e.message}`);
         }
       });
       
       document.getElementById('globe-sats').textContent = satellites3D.length;
-      updateTerminalLog('3D', `${satellites3D.length} 3D satellites created and added to scene`);
+      updateTerminalLog('3D', `${satellites3D.length} tactical objects deployed`);
     }
     
     function update3DSatellites() {
-      if (satellites3D.length === 0) {
-        return;
-      }
+      if (satellites3D.length === 0) return;
       
       const currentTime = new Date();
-      let updatedCount = 0;
-      let errorCount = 0;
       
       satellites3D.forEach((sat, index) => {
         const rec = sat.userData.rec;
-        if (!rec) {
-          errorCount++;
-          return;
-        }
+        if (!rec) return;
         
         try {
           const positionAndVelocity = satellite.propagate(rec, currentTime);
-          
-          if (!positionAndVelocity.position) {
-            errorCount++;
-            return;
-          }
+          if (!positionAndVelocity.position) return;
           
           const positionEci = positionAndVelocity.position;
           
-          // Check for NaN values
-          if (isNaN(positionEci.x) || isNaN(positionEci.y) || isNaN(positionEci.z)) {
-            if (index === 0) {
-              updateTerminalLog('3D', `Satellite ${index}: Invalid ECI position - NaN detected`);
-            }
-            errorCount++;
-            return;
-          }
-          
-          // Debug: Log first satellite position occasionally
-          if (index === 0 && Date.now() % 5000 < 1000) {
-            updateTerminalLog('3D', `Sat ${index} ECI: ${positionEci.x.toFixed(0)}, ${positionEci.y.toFixed(0)}, ${positionEci.z.toFixed(0)}`);
-          }
+          if (isNaN(positionEci.x) || isNaN(positionEci.y) || isNaN(positionEci.z)) return;
           
           if (orbitalMotion) {
-            // Convert ECI to 3D coordinates 
             sat.position.set(
               positionEci.x,
-              positionEci.z, // Y is up in Three.js
+              positionEci.z,
               -positionEci.y
             );
           }
           
-          // Update visibility and color based on observer
+          // Update colors based on visibility
           if (obs && sat.material) {
             const gmst = satellite.gstime(currentTime);
             const observerGd = {
@@ -1730,7 +1742,6 @@
             
             const isVisible = elevation >= (obs.elevMin || 25);
             
-            // Update color and opacity - check if material methods exist
             if (sat.material.color && sat.material.color.setHex) {
               if (isVisible) {
                 sat.material.color.setHex(0x00ff00);
@@ -1739,38 +1750,18 @@
                   sat.material.emissiveIntensity = 0.8;
                 }
               } else {
-                sat.material.color.setHex(0x666666);
+                sat.material.color.setHex(0x444444);
                 if (sat.material.emissive && sat.material.emissive.setHex) {
-                  sat.material.emissive.setHex(0x222222);
+                  sat.material.emissive.setHex(0x111111);
                   sat.material.emissiveIntensity = 0.2;
                 }
               }
             }
           }
           
-          updatedCount++;
-          
         } catch (e) {
-          if (errorCount < 5) { // Only log first few errors to avoid spam
-            updateTerminalLog('3D', `Error updating satellite ${index}: ${e.message}`);
-          }
-          errorCount++;
+          // Silent error handling for performance
         }
-      });
-      
-      // Debug log every 10 seconds
-      if (Date.now() % 10000 < 1000) {
-        updateTerminalLog('3D', `Updated ${updatedCount}/${satellites3D.length} satellites (${errorCount} errors)`);
-      }
-    }
-    
-    // ==================== CONTROLES ====================
-    
-    function setupControls() {
-      document.getElementById('btnApply').addEventListener('click', () => {
-        setObserverLocation();
-        updateSatellites(); // Force immediate update
-        updateTerminalLog('CMD', 'Observer location updated and satellites refreshed');
       });
     }
     
@@ -1794,7 +1785,6 @@
         const deltaX = e.clientX - mouseX;
         const deltaY = e.clientY - mouseY;
         
-        // Rotate camera around origin
         const spherical = new THREE.Spherical();
         spherical.setFromVector3(camera3D.position);
         spherical.theta -= deltaX * 0.01;
@@ -1817,18 +1807,7 @@
         camera3D.position.multiplyScalar(scale);
         camera3D.position.clampLength(8000, 50000);
       });
-      
-      // Orbit speed control
-      const speedSlider = document.getElementById('orbitSpeed');
-      if (speedSlider) {
-        speedSlider.addEventListener('input', (e) => {
-          orbitSpeedMultiplier = parseInt(e.target.value);
-          updateTerminalLog('3D', `Orbit speed: ${orbitSpeedMultiplier}x`);
-        });
-      }
     }
-    
-    // ==================== ANIMAÇÃO ====================
     
     let lastTime = 0;
     let frameCount = 0;
@@ -1841,7 +1820,7 @@
       
       animationId = requestAnimationFrame(animate3D);
       
-      // FPS Counter
+      // FPS counter
       frameCount++;
       const currentTime = performance.now();
       if (currentTime >= lastTime + 1000) {
@@ -1851,19 +1830,19 @@
         lastTime = currentTime;
       }
       
-      // Update time display
+      // Time display
       const timeEl = document.getElementById('globe-time');
       if (timeEl) {
         const now = new Date();
         timeEl.textContent = now.toLocaleTimeString('pt-BR');
       }
       
-      // Auto rotate Earth
+      // Auto rotate
       if (autoRotate && earthMesh) {
         earthMesh.rotation.y += 0.002;
       }
       
-      // SEMPRE atualizar satélites (mesmo com orbital motion pausado, para debug)
+      // Update satellites
       update3DSatellites();
       
       // Render
@@ -1872,34 +1851,30 @@
       }
     }
     
-    // ==================== FUNÇÕES DE CONTROLE ====================
+    // ==================== CONTROLES ====================
     
     function switchView(view) {
       currentView = view;
       
-      // Update tabs
       document.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.remove('active');
       });
       event.target.classList.add('active');
       
-      // Update views
       document.querySelectorAll('.view-content').forEach(content => {
         content.classList.remove('active');
       });
       document.getElementById(view + '-view').classList.add('active');
       
-      // Initialize 3D if needed
       if (view === 'globe' && !globe3D) {
         setTimeout(() => init3DGlobe(), 100);
       }
       
-      // Start/stop animation
       if (view === 'globe' && globe3D) {
         animate3D();
       }
       
-      updateTerminalLog('VIEW', `Switched to ${view.toUpperCase()} view`);
+      updateTerminalLog('VIEW', `Display mode: ${view.toUpperCase()}`);
     }
     
     function resetGlobeView() {
@@ -1910,7 +1885,7 @@
       if (earthMesh) {
         earthMesh.rotation.set(0, 0, 0);
       }
-      updateTerminalLog('3D', 'View reset');
+      updateTerminalLog('3D', 'Tactical view reset');
     }
     
     function toggleRotation() {
@@ -1920,121 +1895,43 @@
       updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
     }
     
-    function createTestSatellites() {
-      updateTerminalLog('TEST', 'Creating test satellites in fixed positions...');
-      
-      // Clear existing satellites
-      satellites3D.forEach(sat => {
-        if (sat.parent) {
-          sat.parent.remove(sat);
-        }
-      });
-      satellites3D = [];
-      
-      // Create simple test satellites in fixed positions around Earth
-      const testPositions = [
-        { x: 10000, y: 2000, z: 2000, name: 'TEST-SAT-1' },
-        { x: -8000, y: 3000, z: 4000, name: 'TEST-SAT-2' },
-        { x: 5000, y: -7000, z: 6000, name: 'TEST-SAT-3' },
-        { x: -3000, y: 8000, z: -5000, name: 'TEST-SAT-4' },
-        { x: 7000, y: 4000, z: -8000, name: 'TEST-SAT-5' }
-      ];
-      
-      const satGeometry = new THREE.SphereGeometry(300, 16, 16); // Even bigger for testing
-      
-      testPositions.forEach((pos, index) => {
-        const material = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(0x00ff00),
-          transparent: false
-        });
-        material.emissive = new THREE.Color(0x00ff00);
-        material.emissiveIntensity = 1.0;
-        
-        const satellite = new THREE.Mesh(satGeometry, material);
-        satellite.position.set(pos.x, pos.y, pos.z);
-        
-        satellite.userData = {
-          index: index,
-          name: pos.name,
-          isTest: true
-        };
-        
-        // Add a bright glow
-        const glowGeometry = new THREE.SphereGeometry(400, 8, 8);
-        const glowMaterial = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(0x00ff00),
-          transparent: true,
-          opacity: 0.5
-        });
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        satellite.add(glow);
-        
-        scene3D.add(satellite);
-        satellites3D.push(satellite);
-        
-        updateTerminalLog('TEST', `✓ ${pos.name} created at ${pos.x}, ${pos.y}, ${pos.z}`);
-      });
-      
-      document.getElementById('globe-sats').textContent = satellites3D.length;
-      updateTerminalLog('TEST', `${satellites3D.length} test satellites created and visible`);
-      
-      // Disable orbital motion for test satellites
-      orbitalMotion = false;
-      const orbEl = document.getElementById('globe-orbits');
-      if (orbEl) orbEl.textContent = 'TEST MODE';
-    }
-    
-    function debugSatellites() {
-      updateTerminalLog('DEBUG', `=== SATELLITE DEBUG INFO ===`);
-      updateTerminalLog('DEBUG', `Satellites3D array length: ${satellites3D.length}`);
-      updateTerminalLog('DEBUG', `SatRecs array length: ${satRecs.length}`);
-      updateTerminalLog('DEBUG', `TLE list length: ${tleList.length}`);
-      updateTerminalLog('DEBUG', `Orbital motion: ${orbitalMotion}`);
-      updateTerminalLog('DEBUG', `Globe3D initialized: ${globe3D}`);
-      updateTerminalLog('DEBUG', `Observer: ${obs ? `${obs.lat}, ${obs.lon}` : 'null'}`);
-      
-      if (scene3D) {
-        updateTerminalLog('DEBUG', `Scene children count: ${scene3D.children.length}`);
-      }
-      
-      if (camera3D) {
-        updateTerminalLog('DEBUG', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
-      }
-      
-      if (satellites3D.length > 0) {
-        const sat = satellites3D[0];
-        updateTerminalLog('DEBUG', `First satellite position: ${sat.position.x.toFixed(0)}, ${sat.position.y.toFixed(0)}, ${sat.position.z.toFixed(0)}`);
-        updateTerminalLog('DEBUG', `First satellite visible: ${sat.visible}`);
-        updateTerminalLog('DEBUG', `First satellite material: ${sat.material ? 'exists' : 'missing'}`);
-        
-        // Test propagation
-        if (sat.userData.rec) {
-          try {
-            const testTime = new Date();
-            const result = satellite.propagate(sat.userData.rec, testTime);
-            if (result.position) {
-              updateTerminalLog('DEBUG', `Test propagation: ${result.position.x.toFixed(0)}, ${result.position.y.toFixed(0)}, ${result.position.z.toFixed(0)}`);
-            } else {
-              updateTerminalLog('DEBUG', `Test propagation: FAILED - no position`);
-            }
-          } catch (e) {
-            updateTerminalLog('DEBUG', `Test propagation: ERROR - ${e.message}`);
-          }
-        }
-      }
-      
-      // Force recreation of satellites with fresh data
-      updateTerminalLog('DEBUG', `Forcing satellite recreation...`);
-      create3DSatellites();
-    }
-    
     function toggleOrbitalMotion() {
       orbitalMotion = !orbitalMotion;
       const orbEl = document.getElementById('globe-orbits');
       if (orbEl) orbEl.textContent = orbitalMotion ? 'ACTIVE' : 'PAUSED';
       const btn = event.target;
       if (btn) btn.textContent = orbitalMotion ? 'PAUSE ORBITS' : 'RESUME ORBITS';
-      updateTerminalLog('3D', `Orbital motion ${orbitalMotion ? 'resumed' : 'paused'}`);
+      updateTerminalLog('3D', `Orbital motion ${orbitalMotion ? 'active' : 'paused'}`);
+    }
+    
+    function debugSatellites() {
+      updateTerminalLog('DEBUG', `=== TACTICAL SYSTEM DEBUG ===`);
+      updateTerminalLog('DEBUG', `TLE catalog: ${tleList.length} entries`);
+      updateTerminalLog('DEBUG', `Valid SGP4 records: ${satRecs.filter(r => r !== null).length}`);
+      updateTerminalLog('DEBUG', `3D objects: ${satellites3D.length}`);
+      updateTerminalLog('DEBUG', `Current view: ${currentView}`);
+      updateTerminalLog('DEBUG', `Globe system: ${globe3D ? 'ONLINE' : 'OFFLINE'}`);
+      updateTerminalLog('DEBUG', `Observer: ${obs.lat.toFixed(3)}°, ${obs.lon.toFixed(3)}°`);
+      
+      if (satRecs.length > 0) {
+        const validIndex = satRecs.findIndex(r => r !== null);
+        if (validIndex >= 0) {
+          try {
+            const testTime = new Date();
+            const result = satellite.propagate(satRecs[validIndex], testTime);
+            if (result.position) {
+              updateTerminalLog('DEBUG', `Propagation test: SUCCESS`);
+              updateTerminalLog('DEBUG', `Position: ${result.position.x.toFixed(0)}, ${result.position.y.toFixed(0)}, ${result.position.z.toFixed(0)}`);
+            } else {
+              updateTerminalLog('DEBUG', `Propagation test: FAILED`);
+            }
+          } catch (e) {
+            updateTerminalLog('DEBUG', `Propagation error: ${e.message}`);
+          }
+        }
+      }
+      
+      updateTerminalLog('DEBUG', `=== END DEBUG OUTPUT ===`);
     }
     
     // ==================== UTILITÁRIOS ====================
@@ -2054,11 +1951,12 @@
         terminal.appendChild(line);
         terminal.scrollTop = terminal.scrollHeight;
         
-        // Keep only last 50 lines
         while (terminal.children.length > 50) {
           terminal.removeChild(terminal.firstChild);
         }
       }
+      
+      console.log(`%c[${time}] [${type}] ${message}`, "color: #00ff00; font-family: monospace");
     }
     
     function updateStats(visible, tracked, total) {
@@ -2080,24 +1978,19 @@
       }
     });
     
-    // Export functions to global scope
+    // Export functions
     window.switchView = switchView;
     window.resetGlobeView = resetGlobeView;
     window.toggleRotation = toggleRotation;
     window.toggleOrbitalMotion = toggleOrbitalMotion;
     window.debugSatellites = debugSatellites;
-    window.createTestSatellites = createTestSatellites;
     
     // ==================== INICIALIZAÇÃO ====================
     
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', initApp);
-    
-    // Initialize immediately if DOM is ready
     if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initApp);
+      document.addEventListener('DOMContentLoaded', init);
     } else {
-      initApp();
+      init();
     }
   </script>
 </body>
