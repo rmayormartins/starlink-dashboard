@@ -530,6 +530,7 @@
             <button class="btn" onclick="resetGlobeView()">RESET VIEW</button>
             <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
             <button class="btn" onclick="toggleOrbitalMotion()">PAUSE ORBITS</button>
+            <button class="btn" onclick="debugSatellites()">DEBUG SATS</button>
             <div style="margin-top: 10px;">
               <label class="control-label">Orbit Speed</label>
               <input type="range" id="orbitSpeed" min="1" max="100" value="10" style="width: 100%;">
@@ -819,28 +820,40 @@
     let satelliteMarkers = [];
     let selectedSatellite = null;
     
-    // TLE Data para alguns satélites Starlink
+    // TLE Data para alguns satélites Starlink - TLEs mais realistas
     const starlinkTLEs = [
       // STARLINK-1007
       ["STARLINK-1007", 
-       "1 44713U 19074A   25226.50000000  .00001234  00000-0  12345-4 0  9997",
-       "2 44713  53.0534 123.4567   0.1234567  89.1234 270.8765 15.12345678123456"],
+       "1 44713U 19074A   24226.50000000  .00002182  00000-0  15673-3 0  9997",
+       "2 44713  53.0534 123.4567   0.0013467  89.1234 270.8765 15.05094678234567"],
       // STARLINK-1019  
       ["STARLINK-1019",
-       "1 44714U 19074B   25226.50000000  .00001456  00000-0  14567-4 0  9998", 
-       "2 44714  53.0534 143.4567   0.1456789  89.1456 270.8543 15.12345678123457"],
+       "1 44714U 19074B   24226.51000000  .00001456  00000-0  11567-3 0  9998", 
+       "2 44714  53.0534 143.4567   0.0014567  89.1456 270.8543 15.05094678234568"],
       // STARLINK-1021
       ["STARLINK-1021",
-       "1 44715U 19074C   25226.50000000  .00001678  00000-0  16789-4 0  9999",
-       "2 44715  53.0534 163.4567   0.1678901  89.1678 270.8321 15.12345678123458"],
+       "1 44715U 19074C   24226.52000000  .00001678  00000-0  12789-3 0  9999",
+       "2 44715  53.0534 163.4567   0.0015678  89.1678 270.8321 15.05094678234569"],
       // STARLINK-1024
       ["STARLINK-1024", 
-       "1 44716U 19074D   25226.50000000  .00001890  00000-0  18901-4 0  9990",
-       "2 44716  53.0534 183.4567   0.1890123  89.1890 270.8099 15.12345678123459"],
+       "1 44716U 19074D   24226.53000000  .00001890  00000-0  13901-3 0  9990",
+       "2 44716  53.0534 183.4567   0.0016789  89.1890 270.8099 15.05094678234570"],
       // STARLINK-1030
       ["STARLINK-1030",
-       "1 44717U 19074E   25226.50000000  .00002102  00000-0  21023-4 0  9991",
-       "2 44717  53.0534 203.4567   0.2102345  89.2102 270.7877 15.12345678123460"]
+       "1 44717U 19074E   24226.54000000  .00002102  00000-0  15023-3 0  9991",
+       "2 44717  53.0534 203.4567   0.0017890  89.2102 270.7877 15.05094678234571"],
+      // STARLINK-1035
+      ["STARLINK-1035",
+       "1 44718U 19074F   24226.55000000  .00002314  00000-0  16145-3 0  9992",
+       "2 44718  53.0534 223.4567   0.0018901  89.2314 270.7655 15.05094678234572"],
+      // STARLINK-1040
+      ["STARLINK-1040",
+       "1 44719U 19074G   24226.56000000  .00002526  00000-0  17267-3 0  9993",
+       "2 44719  53.0534 243.4567   0.0019012  89.2526 270.7433 15.05094678234573"],
+      // STARLINK-1045
+      ["STARLINK-1045",
+       "1 44720U 19074H   24226.57000000  .00002738  00000-0  18389-3 0  9994",
+       "2 44720  53.0534 263.4567   0.0020123  89.2738 270.7211 15.05094678234574"]
     ];
     
     // Satellite records
@@ -901,9 +914,10 @@
         zoomControl: false
       });
       
-      // Dark tile layer
-      L.tileLayer('https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{z}/{x}/{y}{r}.png', {
-        attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a>',
+      // Dark tile layer - usando OpenStreetMap (gratuito)
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+        subdomains: 'abcd',
         maxZoom: 20,
       }).addTo(map);
       
@@ -1202,10 +1216,10 @@
       scene3D = new THREE.Scene();
       scene3D.fog = new THREE.Fog(0x000011, 15000, 25000);
       
-      // Camera
+      // Camera - posição melhor para ver Terra e satélites
       const aspect = container.clientWidth / container.clientHeight;
-      camera3D = new THREE.PerspectiveCamera(45, aspect, 1, 30000);
-      camera3D.position.set(0, 0, 15000);
+      camera3D = new THREE.PerspectiveCamera(45, aspect, 1, 50000);
+      camera3D.position.set(12000, 8000, 12000);
       camera3D.lookAt(0, 0, 0);
       
       // Renderer
@@ -1326,16 +1340,16 @@
       });
       satellites3D = [];
       
-      // Satellite geometry
-      const satGeometry = new THREE.SphereGeometry(50, 8, 8);
+      // Satellite geometry - MUITO MAIOR para visibilidade
+      const satGeometry = new THREE.SphereGeometry(200, 12, 12);
       
       satRecs.forEach((satrec, index) => {
         const material = new THREE.MeshBasicMaterial({
           color: 0x00ff00,
-          transparent: true,
-          opacity: 0.8,
+          transparent: false,
+          opacity: 1.0,
           emissive: 0x00ff00,
-          emissiveIntensity: 0.3
+          emissiveIntensity: 0.8
         });
         
         const satellite = new THREE.Mesh(satGeometry, material);
@@ -1345,18 +1359,27 @@
           rec: satrec
         };
         
-        // Add a small trail effect
-        const trailGeometry = new THREE.SphereGeometry(20, 6, 6);
-        const trailMaterial = new THREE.MeshBasicMaterial({
+        // Add a glow effect
+        const glowGeometry = new THREE.SphereGeometry(250, 8, 8);
+        const glowMaterial = new THREE.MeshBasicMaterial({
           color: 0x00ff00,
           transparent: true,
           opacity: 0.3
         });
-        const trail = new THREE.Mesh(trailGeometry, trailMaterial);
-        satellite.add(trail);
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        satellite.add(glow);
+        
+        // Posição inicial para debug
+        satellite.position.set(
+          8000 + index * 500,
+          1000,
+          1000
+        );
         
         scene3D.add(satellite);
         satellites3D.push(satellite);
+        
+        updateTerminalLog('3D', `Satellite ${index}: ${tleList[index].name} created at ${satellite.position.x}, ${satellite.position.y}, ${satellite.position.z}`);
       });
       
       document.getElementById('globe-sats').textContent = satellites3D.length;
@@ -1364,11 +1387,15 @@
     }
     
     function update3DSatellites() {
-      if (!orbitalMotion || satellites3D.length === 0) return;
+      if (satellites3D.length === 0) {
+        updateTerminalLog('3D', 'No satellites to update');
+        return;
+      }
       
       const currentTime = new Date();
+      let updatedCount = 0;
       
-      satellites3D.forEach(sat => {
+      satellites3D.forEach((sat, index) => {
         const rec = sat.userData.rec;
         if (!rec) return;
         
@@ -1378,13 +1405,19 @@
           
           const positionEci = positionAndVelocity.position;
           
-          // Convert ECI to 3D coordinates (scale down for visualization)
-          const scale = 1; // 1:1 scale
-          sat.position.set(
-            positionEci.x * scale,
-            positionEci.z * scale, // Y is up in Three.js
-            -positionEci.y * scale
-          );
+          // Debug: Log first satellite position
+          if (index === 0) {
+            updateTerminalLog('3D', `Sat ${index} ECI: ${positionEci.x.toFixed(0)}, ${positionEci.y.toFixed(0)}, ${positionEci.z.toFixed(0)}`);
+          }
+          
+          if (orbitalMotion) {
+            // Convert ECI to 3D coordinates 
+            sat.position.set(
+              positionEci.x,
+              positionEci.z, // Y is up in Three.js
+              -positionEci.y
+            );
+          }
           
           // Update visibility and color based on observer
           if (obs) {
@@ -1404,19 +1437,26 @@
             // Update color and opacity
             if (isVisible) {
               sat.material.color.setHex(0x00ff00);
-              sat.material.opacity = 1.0;
-              sat.material.emissiveIntensity = 0.5;
+              sat.material.emissive.setHex(0x00ff00);
+              sat.material.emissiveIntensity = 0.8;
             } else {
               sat.material.color.setHex(0x666666);
-              sat.material.opacity = 0.4;
-              sat.material.emissiveIntensity = 0.1;
+              sat.material.emissive.setHex(0x222222);
+              sat.material.emissiveIntensity = 0.2;
             }
           }
           
+          updatedCount++;
+          
         } catch (e) {
-          // Silently handle propagation errors
+          updateTerminalLog('3D', `Error updating satellite ${index}: ${e.message}`);
         }
       });
+      
+      // Debug log every 10 seconds
+      if (Date.now() % 10000 < 1000) {
+        updateTerminalLog('3D', `Updated ${updatedCount}/${satellites3D.length} satellites`);
+      }
     }
     
     // ==================== CONTROLES ====================
@@ -1469,7 +1509,7 @@
         if (!camera3D) return;
         const scale = e.deltaY > 0 ? 1.1 : 0.9;
         camera3D.position.multiplyScalar(scale);
-        camera3D.position.clampLength(8000, 30000);
+        camera3D.position.clampLength(8000, 50000);
       });
       
       // Orbit speed control
@@ -1517,7 +1557,7 @@
         earthMesh.rotation.y += 0.002;
       }
       
-      // Update satellite positions
+      // SEMPRE atualizar satélites (mesmo com orbital motion pausado, para debug)
       update3DSatellites();
       
       // Render
@@ -1558,7 +1598,7 @@
     
     function resetGlobeView() {
       if (camera3D) {
-        camera3D.position.set(0, 0, 15000);
+        camera3D.position.set(12000, 8000, 12000);
         camera3D.lookAt(0, 0, 0);
       }
       if (earthMesh) {
@@ -1572,6 +1612,23 @@
       const rotEl = document.getElementById('globe-rotation');
       if (rotEl) rotEl.textContent = autoRotate ? 'ON' : 'OFF';
       updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
+    }
+    
+    function debugSatellites() {
+      updateTerminalLog('DEBUG', `Satellites3D array length: ${satellites3D.length}`);
+      updateTerminalLog('DEBUG', `SatRecs array length: ${satRecs.length}`);
+      updateTerminalLog('DEBUG', `Orbital motion: ${orbitalMotion}`);
+      updateTerminalLog('DEBUG', `Globe3D initialized: ${globe3D}`);
+      
+      if (satellites3D.length > 0) {
+        const sat = satellites3D[0];
+        updateTerminalLog('DEBUG', `First satellite position: ${sat.position.x.toFixed(0)}, ${sat.position.y.toFixed(0)}, ${sat.position.z.toFixed(0)}`);
+        updateTerminalLog('DEBUG', `First satellite visible: ${sat.visible}`);
+        updateTerminalLog('DEBUG', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
+      }
+      
+      // Force recreation of satellites
+      create3DSatellites();
     }
     
     function toggleOrbitalMotion() {
@@ -1631,6 +1688,7 @@
     window.resetGlobeView = resetGlobeView;
     window.toggleRotation = toggleRotation;
     window.toggleOrbitalMotion = toggleOrbitalMotion;
+    window.debugSatellites = debugSatellites;
     
     // ==================== INICIALIZAÇÃO ====================
     
