@@ -434,59 +434,12 @@
       font-weight: 500;
     }
     
-    .rf-plot {
-      height: 160px;
-      background: #000000;
-      border: 1px solid #222222;
-      margin: 10px 0;
-    }
-    
     .terminal-text {
       font-family: 'Share Tech Mono', monospace;
       white-space: pre;
       line-height: 1.3;
       color: #00ff00;
       font-size: 11px;
-    }
-    
-    /* Weather Display */
-    .weather-display {
-      background: #000000;
-      border: 1px solid #333333;
-      padding: 10px;
-      margin: 10px 0;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 10px;
-    }
-    
-    /* Handover Notification */
-    .handover-notification {
-      position: fixed;
-      top: 100px;
-      right: 20px;
-      z-index: 10000;
-      animation: slideIn 0.5s;
-    }
-    
-    .terminal-box {
-      background: #000000;
-      border: 1px solid #00ff00;
-      color: #00ff00;
-      padding: 10px;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 11px;
-      white-space: pre;
-      box-shadow: 0 0 20px #00ff00;
-    }
-    
-    @keyframes slideIn {
-      from { transform: translateX(100%); opacity: 0; }
-      to { transform: translateX(0); opacity: 1; }
-    }
-    
-    @keyframes fadeOut {
-      from { opacity: 1; }
-      to { opacity: 0; }
     }
     
     /* Leaflet Popup Dark Theme */
@@ -590,13 +543,8 @@
               <input type="checkbox" id="showFootprints" checked>
               <label for="showFootprints">Show Footprints</label>
             </div>
-            <div class="checkbox-group">
-              <input type="checkbox" id="considerRain" checked>
-              <label for="considerRain">Rain Attenuation</label>
-            </div>
             <button class="btn" id="btnApply">EXECUTE</button>
             <button class="btn" id="btnPause">PAUSE ORBITS</button>
-            <button class="btn" id="btnHandover">START HANDOVER</button>
           </div>
         </div>
         
@@ -628,15 +576,6 @@
                 <span class="data-label">LINK:</span>
                 <span class="data-value good">OPERATIONAL</span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="panel-section">
-          <div class="section-title">Weather Data</div>
-          <div class="section-content">
-            <div id="weatherInfo" class="weather-display">
-              <div class="terminal-text">LOADING WEATHER...</div>
             </div>
           </div>
         </div>
@@ -677,10 +616,6 @@
               <span class="data-label">RANGE:</span>
               <span class="data-value">---</span>
             </div>
-            <div class="data-row">
-              <span class="data-label">SNR:</span>
-              <span class="data-value">---</span>
-            </div>
           </div>
         </div>
         
@@ -690,14 +625,6 @@
           <div class="legend-item">
             <div class="legend-color" style="background: #00ff00;"></div>
             <span style="color: #999999;">VISIBLE</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ffffff;"></div>
-            <span style="color: #999999;">SERVING</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ffff00;"></div>
-            <span style="color: #999999;">CANDIDATE</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #ff00ff;"></div>
@@ -740,10 +667,31 @@
             </div>
           </div>
         </div>
+        
+        <!-- 3D Legend -->
+        <div class="legend">
+          <div class="legend-title">Altitude Color Code</div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ff0000;"></div>
+            <span style="color: #999999;">HIGH (>600km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00;"></div>
+            <span style="color: #999999;">MEDIUM (550-600km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00;"></div>
+            <span style="color: #999999;">NORMAL (500-550km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #0000ff;"></div>
+            <span style="color: #999999;">LOW (<500km)</span>
+          </div>
+        </div>
       </div>
     </div>
 
-    <!-- Right Panel - RF Analysis -->
+    <!-- Right Panel - Satellite Data -->
     <div class="right-panel">
       <!-- Selected Satellite Data -->
       <div class="info-card">
@@ -792,20 +740,12 @@
               <span class="data-value">14.0-14.5 GHz</span>
             </div>
             <div class="data-row">
-              <span class="data-label">SNR:</span>
-              <span class="data-value" id="rf-snr">---</span>
-            </div>
-            <div class="data-row">
               <span class="data-label">RX POWER:</span>
               <span class="data-value" id="rf-power">---</span>
             </div>
             <div class="data-row">
               <span class="data-label">FSPL:</span>
               <span class="data-value" id="rf-fspl">---</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">RAIN ATT:</span>
-              <span class="data-value" id="rf-rain">---</span>
             </div>
             <div class="data-row">
               <span class="data-label">LINK STATUS:</span>
@@ -815,22 +755,15 @@
         </div>
       </div>
       
-      <!-- Handover Status -->
+      <!-- Orbital Elements -->
       <div class="info-card">
-        <div class="card-header">Handover Status</div>
+        <div class="card-header">Orbital Elements</div>
         <div class="card-content">
-          <div id="handoverInfo">
-            <div class="terminal-text">HANDOVER INACTIVE</div>
+          <div id="orbital-info" style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
+            <div class="terminal-text">NO SATELLITE SELECTED
+Click on a satellite to view
+orbital parameters and RF data</div>
           </div>
-        </div>
-      </div>
-      
-      <!-- RF Analysis Plots -->
-      <div class="info-card">
-        <div class="card-header">Signal Analysis</div>
-        <div class="card-content">
-          <div id="snrPlot" class="rf-plot"></div>
-          <div id="constPlot" class="rf-plot"></div>
         </div>
       </div>
     </div>
@@ -901,7 +834,6 @@
     let scene3D, camera3D, renderer3D;
     let earthMesh, satellites3D = [];
     let autoRotate = false;
-    let orbitalMotion = true;
     let orbitsPaused = false;
     let animationId = null;
     
@@ -913,19 +845,9 @@
     let isDrawing = false;
     
     let config = {
-      considerRain: true,
       showFootprints: true,
       maxFootprints: 5
     };
-    
-    // Estado para Handover
-    let handoverSimulation = false;
-    let currentServingSat = null;
-    let handoverCandidates = [];
-    
-    // Cache de clima
-    let weatherData = null;
-    let weatherLastFetch = 0;
     
     // ==================== INICIALIZAÇÃO ====================
     
@@ -944,7 +866,6 @@
         init2DMap();
         setupControls();
         setObserverLocation();
-        await fetchWeatherData();
         startSimulation();
         updateTerminalLog("SYSTEM", "TACTICAL OPERATIONS CENTER ONLINE");
       } catch (e) {
@@ -1073,7 +994,6 @@
     function setupControls() {
       document.getElementById("btnApply").addEventListener('click', () => {
         setObserverLocation();
-        fetchWeatherData();
         updateSatellites();
         updateTerminalLog("CMD", "Tactical parameters updated");
       });
@@ -1098,26 +1018,6 @@
         config.showFootprints = e.target.checked;
         updateTerminalLog("CONFIG", `Footprints ${config.showFootprints ? 'enabled' : 'disabled'}`);
         updateSatellites();
-      });
-      
-      document.getElementById("considerRain").addEventListener('change', (e) => {
-        config.considerRain = e.target.checked;
-        updateTerminalLog("CONFIG", `Rain attenuation ${config.considerRain ? 'enabled' : 'disabled'}`);
-        updateSatellites();
-      });
-      
-      // Handover button
-      document.getElementById("btnHandover").addEventListener('click', () => {
-        handoverSimulation = !handoverSimulation;
-        const btn = document.getElementById("btnHandover");
-        btn.textContent = handoverSimulation ? "STOP HANDOVER" : "START HANDOVER";
-        updateTerminalLog("HANDOVER", handoverSimulation ? "Simulation started" : "Simulation stopped");
-        
-        if (!handoverSimulation) {
-          currentServingSat = null;
-          handoverCandidates = [];
-          updateHandoverDisplay();
-        }
       });
     }
     
@@ -1145,56 +1045,6 @@
       updateTerminalLog('OBS', `Tactical position: ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°W, Elev>${elevMin}°`);
     }
     
-    async function fetchWeatherData() {
-      const now = Date.now();
-      
-      if (weatherData && (now - weatherLastFetch) < 30 * 60 * 1000) {
-        return weatherData;
-      }
-      
-      try {
-        updateTerminalLog("WEATHER", "Fetching atmospheric data...");
-        
-        // Simular dados realistas
-        weatherData = {
-          cloudCover: Math.random() * 100,
-          precipitation: Math.random() * 10,
-          humidity: 60 + Math.random() * 30,
-          temperature: 20 + Math.random() * 15
-        };
-        
-        weatherLastFetch = now;
-        updateWeatherDisplay();
-        updateTerminalLog("WEATHER", `Precipitation: ${weatherData.precipitation.toFixed(1)}mm/h`);
-        
-      } catch (e) {
-        updateTerminalLog("ERROR", `Weather data fetch failed: ${e.message}`);
-        weatherData = { cloudCover: 0, precipitation: 0, humidity: 70, temperature: 25 };
-      }
-      
-      return weatherData;
-    }
-    
-    function updateWeatherDisplay() {
-      if (!weatherData) return;
-      
-      const weatherInfo = document.getElementById("weatherInfo");
-      if (weatherInfo) {
-        const rainAtt = config.considerRain ? calculateRainAttenuation(45, weatherData.precipitation) : 0;
-        weatherInfo.innerHTML = `
-          <div class="terminal-text">
-┌─ ATMOSPHERIC CONDITIONS ─┐
-│ CLOUDS......: ${weatherData.cloudCover.toFixed(0).padStart(3)}%       │
-│ PRECIP......: ${weatherData.precipitation.toFixed(1).padStart(4)} mm/h  │
-│ HUMIDITY....: ${weatherData.humidity.toFixed(0).padStart(3)}%       │
-│ TEMP........: ${weatherData.temperature.toFixed(1).padStart(4)}°C     │
-│ RAIN ATT....: ${rainAtt.toFixed(1).padStart(4)} dB    │
-└──────────────────────────┘
-          </div>
-        `;
-      }
-    }
-    
     function startSimulation() {
       updateTerminalLog('SIM', 'Starting real-time orbital tracking...');
       
@@ -1202,12 +1052,8 @@
       setInterval(() => {
         if (!isDrawing && !orbitsPaused) {
           updateSatellites();
-          if (handoverSimulation) simulateHandover();
         }
       }, REFRESH_MS);
-      
-      // Plot updates
-      setInterval(updateRFPlots, 5000);
       
       // Initial update
       updateSatellites();
@@ -1221,12 +1067,15 @@
       
       updateTerminalLog('3D', 'Initializing tactical 3D display...');
       
+      // Clear previous content
+      container.innerHTML = '';
+      
       scene3D = new THREE.Scene();
-      scene3D.fog = new THREE.Fog(0x000011, 15000, 25000);
+      scene3D.fog = new THREE.Fog(0x000011, 10000, 30000);
       
       const aspect = container.clientWidth / container.clientHeight;
-      camera3D = new THREE.PerspectiveCamera(45, aspect, 1, 50000);
-      camera3D.position.set(12000, 8000, 12000);
+      camera3D = new THREE.PerspectiveCamera(60, aspect, 1, 100000);
+      camera3D.position.set(15000, 10000, 15000);
       camera3D.lookAt(0, 0, 0);
       
       renderer3D = new THREE.WebGLRenderer({ 
@@ -1237,11 +1086,12 @@
       renderer3D.setClearColor(0x000011, 1);
       container.appendChild(renderer3D.domElement);
       
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+      // Lighting
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
       scene3D.add(ambientLight);
       
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-      directionalLight.position.set(15000, 10000, 15000);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
+      directionalLight.position.set(20000, 15000, 20000);
       scene3D.add(directionalLight);
       
       createEarth();
@@ -1259,7 +1109,7 @@
       const earthMaterial = new THREE.MeshPhongMaterial({
         color: 0x2244aa,
         emissive: 0x112244,
-        emissiveIntensity: 0.3,
+        emissiveIntensity: 0.1,
         specular: 0x444444,
         shininess: 30,
         transparent: true,
@@ -1275,23 +1125,23 @@
         color: 0x00aa00,
         wireframe: true,
         transparent: true,
-        opacity: 0.2
+        opacity: 0.3
       });
       const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
       earthMesh.add(wireframeMesh);
       
       // Observer location
-      const markerGeometry = new THREE.SphereGeometry(50, 8, 8);
+      const markerGeometry = new THREE.SphereGeometry(100, 16, 16);
       const markerMaterial = new THREE.MeshBasicMaterial({
         color: 0xff0000,
         emissive: 0xff0000,
-        emissiveIntensity: 0.5
+        emissiveIntensity: 0.8
       });
       const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
       
       const lat = obs.lat * Math.PI / 180;
       const lon = obs.lon * Math.PI / 180;
-      const radius = 6371 + 20;
+      const radius = 6371 + 50;
       
       observerMarker.position.x = radius * Math.cos(lat) * Math.cos(lon);
       observerMarker.position.y = radius * Math.sin(lat);
@@ -1301,13 +1151,14 @@
     }
     
     function create3DSatellites() {
-      if (satRecs.filter(r => r !== null).length === 0) {
+      const validSats = satRecs.filter(r => r !== null);
+      if (validSats.length === 0) {
         updateTerminalLog('3D', 'No valid satellites for 3D display');
         setTimeout(create3DSatellites, 2000);
         return;
       }
       
-      updateTerminalLog('3D', `Creating ${satRecs.filter(r => r !== null).length} tactical 3D objects...`);
+      updateTerminalLog('3D', `Creating ${validSats.length} tactical 3D objects...`);
       
       // Clear existing satellites
       satellites3D.forEach(sat => {
@@ -1317,19 +1168,19 @@
       });
       satellites3D = [];
       
-      const satGeometry = new THREE.SphereGeometry(100, 8, 8);
+      const satGeometry = new THREE.SphereGeometry(150, 16, 16);
       
       satRecs.forEach((satrec, index) => {
         if (!satrec) return;
         
         try {
           const material = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x00ff00),
+            color: 0x00ff00,
             transparent: false,
             opacity: 1.0
           });
           material.emissive = new THREE.Color(0x00ff00);
-          material.emissiveIntensity = 0.8;
+          material.emissiveIntensity = 0.5;
           
           const satellite = new THREE.Mesh(satGeometry, material);
           satellite.userData = { 
@@ -1339,73 +1190,68 @@
             material: material
           };
           
-          // Initial position calculation
-          const testTime = new Date();
-          const testResult = satellite.propagate(satrec, testTime);
+          // Get current position
+          const currentTime = new Date();
+          const result = satellite.propagate(satrec, currentTime);
           
-          if (testResult.position && !isNaN(testResult.position.x)) {
-            // Convert ECI to 3D coordinates with proper scaling
-            const scale = 1; // 1:1 scale
+          if (result.position && !isNaN(result.position.x)) {
+            // Convert ECI to 3D world coordinates
             satellite.position.set(
-              testResult.position.x * scale,
-              testResult.position.z * scale,
-              -testResult.position.y * scale
+              result.position.x,
+              result.position.z,
+              -result.position.y
             );
           } else {
-            // Fallback position
-            const alt = 550; // km
+            // Fallback: place in orbit at typical Starlink altitude
+            const alt = 550;
             const radius = 6371 + alt;
             const angle = (index / satRecs.length) * 2 * Math.PI;
+            const inclination = 53 * Math.PI / 180; // Typical Starlink inclination
+            
             satellite.position.set(
-              radius * Math.cos(angle),
-              0,
-              radius * Math.sin(angle)
+              radius * Math.cos(angle) * Math.cos(inclination),
+              radius * Math.sin(inclination),
+              radius * Math.sin(angle) * Math.cos(inclination)
             );
           }
           
           scene3D.add(satellite);
           satellites3D.push(satellite);
           
+          updateTerminalLog('3D', `Satellite ${index} positioned at (${satellite.position.x.toFixed(0)}, ${satellite.position.y.toFixed(0)}, ${satellite.position.z.toFixed(0)})`);
+          
         } catch (e) {
           updateTerminalLog('3D', `Error creating 3D object ${index}: ${e.message}`);
         }
       });
       
-      document.getElementById('globe-sats').textContent = satellites3D.length;
-      updateTerminalLog('3D', `${satellites3D.length} tactical objects deployed`);
+      const globeSatsEl = document.getElementById('globe-sats');
+      if (globeSatsEl) globeSatsEl.textContent = satellites3D.length;
+      updateTerminalLog('3D', `${satellites3D.length} tactical objects deployed in 3D space`);
     }
     
     function update3DSatellites() {
       if (satellites3D.length === 0 || orbitsPaused) return;
       
       const currentTime = new Date();
+      let updated = 0;
       
-      satellites3D.forEach((sat, index) => {
+      satellites3D.forEach((sat, satIndex) => {
         const rec = sat.userData.rec;
         if (!rec) return;
         
         try {
-          const positionAndVelocity = satellite.propagate(rec, currentTime);
-          if (!positionAndVelocity.position) return;
+          const result = satellite.propagate(rec, currentTime);
+          if (!result.position) return;
           
-          const positionEci = positionAndVelocity.position;
+          const pos = result.position;
+          if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z)) return;
           
-          if (isNaN(positionEci.x) || isNaN(positionEci.y) || isNaN(positionEci.z)) return;
-          
-          // Update position with proper scaling
-          const scale = 1;
-          sat.position.set(
-            positionEci.x * scale,
-            positionEci.z * scale,
-            -positionEci.y * scale
-          );
+          // Update position
+          sat.position.set(pos.x, pos.z, -pos.y);
           
           // Calculate altitude for color coding
-          const radius = Math.sqrt(
-            positionEci.x * positionEci.x + 
-            positionEci.y * positionEci.y + 
-            positionEci.z * positionEci.z
-          );
+          const radius = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
           const altitude = radius - 6371;
           
           // Color by altitude
@@ -1420,42 +1266,44 @@
             color = 0x0000ff; // Blue for low altitude
           }
           
-          // Update colors based on visibility and altitude
-          if (obs && sat.material) {
+          // Update visibility based on elevation
+          if (obs) {
             const gmst = satellite.gstime(currentTime);
             const observerGd = {
               latitude: satellite.degreesToRadians(obs.lat),
               longitude: satellite.degreesToRadians(obs.lon),
-              height: obs.height
+              height: obs.height || 0
             };
             
-            const positionEcf = satellite.eciToEcf(positionEci, gmst);
+            const positionEcf = satellite.eciToEcf(pos, gmst);
             const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
             const elevation = satellite.radiansToDegrees(lookAngles.elevation);
             
             const isVisible = elevation >= (obs.elevMin || 25);
             
-            if (sat.material.color && sat.material.color.setHex) {
+            if (sat.material && sat.material.color && sat.material.color.setHex) {
               if (isVisible) {
                 sat.material.color.setHex(color);
-                if (sat.material.emissive && sat.material.emissive.setHex) {
-                  sat.material.emissive.setHex(color);
-                  sat.material.emissiveIntensity = 0.8;
-                }
+                sat.material.emissive.setHex(color);
+                sat.material.emissiveIntensity = 0.5;
               } else {
                 sat.material.color.setHex(0x444444);
-                if (sat.material.emissive && sat.material.emissive.setHex) {
-                  sat.material.emissive.setHex(0x111111);
-                  sat.material.emissiveIntensity = 0.2;
-                }
+                sat.material.emissive.setHex(0x222222);
+                sat.material.emissiveIntensity = 0.1;
               }
             }
           }
+          
+          updated++;
           
         } catch (e) {
           // Silent error handling for performance
         }
       });
+      
+      if (updated > 0) {
+        updateTerminalLog('3D', `Updated ${updated} satellite positions`);
+      }
     }
     
     function setupGlobeControls() {
@@ -1470,6 +1318,7 @@
         mouseDown = true;
         mouseX = e.clientX;
         mouseY = e.clientY;
+        e.preventDefault();
       });
       
       container.addEventListener('mousemove', (e) => {
@@ -1498,7 +1347,8 @@
         if (!camera3D) return;
         const scale = e.deltaY > 0 ? 1.1 : 0.9;
         camera3D.position.multiplyScalar(scale);
-        camera3D.position.clampLength(8000, 50000);
+        camera3D.position.clampLength(8000, 80000);
+        e.preventDefault();
       });
     }
     
@@ -1585,7 +1435,7 @@
       }
     }
     
-    function calculateLinkBudget(elevationDeg, rainAttenuation = 0) {
+    function calculateLinkBudget(elevationDeg) {
       const FREQ = 11.5e9; // Hz (Ku-band downlink)
       const EIRP = 35; // dBW (satellite EIRP)
       const GAIN = 33; // dBi (user terminal gain)
@@ -1597,137 +1447,9 @@
       // Atmospheric losses (higher at low elevations)
       const atmosphericLoss = 0.5 / Math.sin(Math.max(elevationDeg, 5) * Math.PI / 180);
       
-      // Aplicar atenuação por chuva apenas se configurado
-      const appliedRainAtt = config.considerRain ? rainAttenuation : 0;
+      const rxPower = EIRP - FSPL - atmosphericLoss + GAIN;
       
-      const rxPower = EIRP - FSPL - atmosphericLoss - appliedRainAtt + GAIN;
-      const noiseFloor = -134; // dBm
-      const SNR = rxPower - noiseFloor;
-      
-      return { SNR, rxPower, FSPL, rainAttenuation: appliedRainAtt };
-    }
-    
-    function calculateRainAttenuation(elevation, precipitation) {
-      if (precipitation === 0 || !config.considerRain) return 0;
-      
-      const freq = 11.5; // GHz
-      const k = 0.0101 * Math.pow(freq, 2.03);
-      const alpha = 1.065;
-      
-      const slantPath = 550 / Math.sin(Math.max(elevation, 5) * Math.PI / 180);
-      const attenuation = k * Math.pow(precipitation, alpha) * Math.min(slantPath / 10, 5);
-      
-      return Math.min(attenuation, 20);
-    }
-    
-    // ==================== HANDOVER ====================
-    
-    function simulateHandover() {
-      if (!currentServingSat) {
-        const visible = [];
-        
-        for (let i = 0; i < tleList.length; i++) {
-          const rec = satRecs[i];
-          if (!rec) continue;
-          
-          const st = getSatState(rec);
-          if (!st || st.el < obs.elevMin) continue;
-          
-          const rainAtt = config.considerRain && weatherData ? 
-            calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
-          const linkBudget = calculateLinkBudget(st.el, rainAtt);
-          
-          visible.push({
-            satellite: tleList[i],
-            state: st,
-            snr: linkBudget.SNR,
-            index: i
-          });
-        }
-        
-        if (visible.length > 0) {
-          visible.sort((a, b) => b.snr - a.snr);
-          currentServingSat = visible[0];
-          handoverCandidates = visible.slice(1, 4);
-          
-          updateTerminalLog("HANDOVER", `Serving: ${currentServingSat.satellite.name} [SNR: ${currentServingSat.snr.toFixed(1)}dB]`);
-        }
-      } else {
-        const currentState = getSatState(satRecs[currentServingSat.index]);
-        
-        if (!currentState || currentState.el < obs.elevMin - 5) {
-          updateTerminalLog("HANDOVER", `Signal degradation detected on ${currentServingSat.satellite.name}`);
-          
-          if (handoverCandidates.length > 0) {
-            const newServing = handoverCandidates[0];
-            updateTerminalLog("HANDOVER", `Executing handover to ${newServing.satellite.name}`);
-            
-            showHandoverNotification(currentServingSat.satellite.name, newServing.satellite.name);
-            
-            currentServingSat = newServing;
-            handoverCandidates = handoverCandidates.slice(1);
-          } else {
-            currentServingSat = null;
-            updateTerminalLog("HANDOVER", "No candidates available - connection lost");
-          }
-        }
-      }
-      
-      updateHandoverDisplay();
-    }
-    
-    function showHandoverNotification(from, to) {
-      const notification = document.createElement("div");
-      notification.className = "handover-notification";
-      notification.innerHTML = `
-        <div class="terminal-box">
-╔════ HANDOVER EXECUTED ════╗
-║ FROM: ${from.padEnd(20)} ║
-║ TO..: ${to.padEnd(20)} ║
-╚═══════════════════════════╝
-        </div>
-      `;
-      
-      document.body.appendChild(notification);
-      
-      setTimeout(() => {
-        notification.style.animation = "fadeOut 0.5s";
-        setTimeout(() => notification.remove(), 500);
-      }, 3000);
-    }
-    
-    function updateHandoverDisplay() {
-      const handoverInfo = document.getElementById("handoverInfo");
-      if (!handoverInfo) return;
-      
-      let html = '<div class="terminal-text">';
-      
-      if (currentServingSat) {
-        const state = getSatState(satRecs[currentServingSat.index]);
-        if (state) {
-          html += `
-┌─ SERVING SATELLITE ─┐
-│ ${(currentServingSat.satellite.name || 'UNKNOWN').padEnd(18)} │
-│ SNR: ${currentServingSat.snr.toFixed(1)} dB          │
-│ EL.: ${state.el.toFixed(1)}°             │
-└────────────────────┘
-`;
-        }
-      }
-      
-      if (handoverCandidates.length > 0) {
-        html += '\nCANDIDATES:\n';
-        handoverCandidates.forEach((c, i) => {
-          html += `${i+1}. ${c.satellite.name} [${c.snr.toFixed(1)}dB]\n`;
-        });
-      }
-      
-      if (!currentServingSat && handoverCandidates.length === 0) {
-        html += 'HANDOVER INACTIVE\nNo satellites available';
-      }
-      
-      html += '</div>';
-      handoverInfo.innerHTML = html;
+      return { rxPower, FSPL };
     }
     
     // ==================== ATUALIZAÇÃO DE SATÉLITES ====================
@@ -1756,8 +1478,6 @@
         if (!st) continue;
         
         const isVisible = st.el >= obs.elevMin;
-        const isServing = currentServingSat && currentServingSat.index === i;
-        const isCandidate = handoverCandidates.some(c => c.index === i);
         const isSelected = selectedSatellite && selectedSatellite.index === i;
         
         // Tactical color scheme
@@ -1765,15 +1485,7 @@
         let radius = 2;
         let opacity = 0.3;
         
-        if (isServing) {
-          color = '#ffffff'; // White: serving
-          radius = 6;
-          opacity = 1;
-        } else if (isCandidate) {
-          color = '#ffff00'; // Yellow: candidate
-          radius = 4;
-          opacity = 0.8;
-        } else if (isSelected) {
+        if (isSelected) {
           color = '#ff00ff'; // Magenta: selected
           radius = 5;
           opacity = 0.9;
@@ -1793,9 +1505,7 @@
           opacity: opacity + 0.2
         });
         
-        const rainAtt = config.considerRain && weatherData ? 
-          calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
-        const linkBudget = calculateLinkBudget(st.el, rainAtt);
+        const linkBudget = calculateLinkBudget(st.el);
         
         marker.bindPopup(`
           <div class="terminal-popup">
@@ -1804,8 +1514,9 @@ NORAD: ${t.noradId}
 ALT..: ${st.alt.toFixed(0)} km
 ELEV.: ${st.el.toFixed(1)}°
 AZIM.: ${st.az.toFixed(1)}°
-SNR..: ${linkBudget.SNR.toFixed(1)} dB
-${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
+RANGE: ${(st.range/1000).toFixed(0)} km
+SPEED: ${st.speed.toFixed(2)} km/s
+FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
         `);
         
@@ -1862,9 +1573,7 @@ ${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
     function selectSatellite(index, t, rec, st) {
       selectedSatellite = { index, tle: t, rec, state: st };
       
-      const rainAtt = config.considerRain && weatherData ? 
-        calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
-      const linkBudget = calculateLinkBudget(st.el, rainAtt);
+      const linkBudget = calculateLinkBudget(st.el);
       
       // Update target overlay
       const targetInfo = document.getElementById('targetInfo');
@@ -1885,16 +1594,12 @@ ${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
           <span class="data-label">RANGE:</span>
           <span class="data-value">${(st.range/1000).toFixed(0)} km</span>
         </div>
-        <div class="data-row">
-          <span class="data-label">SNR:</span>
-          <span class="data-value">${linkBudget.SNR.toFixed(1)} dB</span>
-        </div>
       `;
       
       // Update satellite info panel
       updateSatelliteInfo(index, st, linkBudget);
       updateRFAnalysis(st, linkBudget);
-      updateRFPlots();
+      updateOrbitalInfo(t, rec);
       
       updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}]`);
       
@@ -1942,23 +1647,21 @@ ${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
     }
     
     function updateRFAnalysis(st, linkBudget) {
-      document.getElementById('rf-snr').textContent = `${linkBudget.SNR.toFixed(1)} dB`;
       document.getElementById('rf-power').textContent = `${linkBudget.rxPower.toFixed(1)} dBm`;
       document.getElementById('rf-fspl').textContent = `${linkBudget.FSPL.toFixed(1)} dB`;
-      document.getElementById('rf-rain').textContent = `${linkBudget.rainAttenuation.toFixed(1)} dB`;
       
       // Link status determination
       let status, statusClass;
       if (st.el < obs.elevMin) {
         status = 'BELOW HORIZON';
         statusClass = 'critical';
-      } else if (linkBudget.SNR > 20) {
+      } else if (linkBudget.rxPower > -80) {
         status = 'EXCELLENT';
         statusClass = 'good';
-      } else if (linkBudget.SNR > 15) {
+      } else if (linkBudget.rxPower > -90) {
         status = 'GOOD';
         statusClass = 'good';
-      } else if (linkBudget.SNR > 10) {
+      } else if (linkBudget.rxPower > -100) {
         status = 'MARGINAL';
         statusClass = 'warning';
       } else {
@@ -1971,109 +1674,39 @@ ${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
       statusEl.className = `data-value ${statusClass}`;
     }
     
-    function updateRFPlots() {
-      if (typeof Plotly === 'undefined' || !selectedSatellite) return;
+    function updateOrbitalInfo(t, rec) {
+      const orbitalInfo = document.getElementById('orbital-info');
       
-      const st = selectedSatellite.state;
-      if (!st) return;
+      if (!t || !rec) return;
       
-      // SNR vs Elevação
-      const elevs = Array.from({length: 19}, (_, k) => k * 5);
-      const snrs = elevs.map(e => {
-        const rainAtt = config.considerRain && weatherData ? 
-          calculateRainAttenuation(e, weatherData.precipitation) : 0;
-        return calculateLinkBudget(e, rainAtt).SNR;
-      });
+      // Extract orbital elements from TLE
+      const line1 = t.line1;
+      const line2 = t.line2;
       
-      Plotly.newPlot("snrPlot", [{
-        x: elevs,
-        y: snrs,
-        mode: "lines+markers",
-        name: "SNR",
-        line: { color: "#00ff00", width: 2 },
-        marker: { color: "#00ff00", size: 4 }
-      }], {
-        title: {
-          text: `SNR vs ELEVATION ${config.considerRain ? '[RAIN: ON]' : '[RAIN: OFF]'}`,
-          font: { color: "#00ff00", family: "monospace", size: 11 }
-        },
-        xaxis: { 
-          title: "ELEVATION (°)", 
-          color: "#00ff00",
-          gridcolor: "#003300",
-          font: { family: "monospace", size: 10 }
-        },
-        yaxis: { 
-          title: "SNR (dB)", 
-          color: "#00ff00",
-          gridcolor: "#003300",
-          font: { family: "monospace", size: 10 }
-        },
-        margin: { t: 40, l: 50, r: 20, b: 40 },
-        paper_bgcolor: "#000000",
-        plot_bgcolor: "#000000",
-        font: { color: "#00ff00", family: "monospace" }
-      }, { displayModeBar: false });
+      if (!line1 || !line2) return;
       
-      // Constelação QPSK
-      const rainAtt = config.considerRain && weatherData ? 
-        calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
-      const linkBudget = calculateLinkBudget(st.el, rainAtt);
-      const noise = Math.max(0.01, 0.5 / Math.sqrt(Math.pow(10, linkBudget.SNR / 10)));
-      const xs = [], ys = [], colors = [];
+      const inclination = parseFloat(line2.substring(8, 16));
+      const raan = parseFloat(line2.substring(17, 25));
+      const eccentricity = parseFloat('0.' + line2.substring(26, 33));
+      const argPerigee = parseFloat(line2.substring(34, 42));
+      const meanAnomaly = parseFloat(line2.substring(43, 51));
+      const meanMotion = parseFloat(line2.substring(52, 63));
       
-      // Gerar pontos QPSK com ruído
-      for (let i = 0; i < 500; i++) {
-        const symbolIndex = i % 4;
-        const sym = [[1,1],[1,-1],[-1,1],[-1,-1]][symbolIndex];
-        
-        // Adicionar ruído gaussiano
-        const noiseX = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
-        const noiseY = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
-        
-        xs.push(sym[0] + noiseX);
-        ys.push(sym[1] + noiseY);
-        colors.push(['#00ff00', '#00ffff', '#ffff00', '#ff00ff'][symbolIndex]);
-      }
+      const period = 1440 / meanMotion; // minutes
       
-      Plotly.newPlot("constPlot", [{
-        x: xs,
-        y: ys,
-        mode: "markers",
-        type: "scatter",
-        marker: { 
-          color: colors,
-          size: 3,
-          opacity: 0.7
-        }
-      }], {
-        title: {
-          text: `QPSK CONSTELLATION [SNR: ${linkBudget.SNR.toFixed(1)}dB]`,
-          font: { color: "#00ff00", family: "monospace", size: 11 }
-        },
-        xaxis: { 
-          range: [-2, 2],
-          scaleanchor: "y",
-          color: "#00ff00",
-          gridcolor: "#003300",
-          zeroline: true,
-          zerolinecolor: "#00ff00",
-          font: { family: "monospace", size: 10 }
-        },
-        yaxis: { 
-          range: [-2, 2],
-          color: "#00ff00",
-          gridcolor: "#003300",
-          zeroline: true,
-          zerolinecolor: "#00ff00",
-          font: { family: "monospace", size: 10 }
-        },
-        margin: { t: 40, l: 40, r: 40, b: 40 },
-        paper_bgcolor: "#000000",
-        plot_bgcolor: "#000000",
-        font: { color: "#00ff00", family: "monospace" },
-        showlegend: false
-      }, { displayModeBar: false });
+      orbitalInfo.innerHTML = `
+        <div class="terminal-text">
+┌─ ORBITAL ELEMENTS ─┐
+│ INCL......: ${inclination.toFixed(2)}°        │
+│ RAAN......: ${raan.toFixed(2)}°        │
+│ ECC.......: ${eccentricity.toFixed(6)}     │
+│ ARG_PER...: ${argPerigee.toFixed(2)}°        │
+│ MEAN_ANOM.: ${meanAnomaly.toFixed(2)}°        │
+│ MEAN_MOT..: ${meanMotion.toFixed(5)} rev/day │
+│ PERIOD....: ${period.toFixed(1)} min       │
+└──────────────────────┘
+        </div>
+      `;
     }
     
     // ==================== CONTROLES ====================
@@ -2104,7 +1737,7 @@ ${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
     
     function resetGlobeView() {
       if (camera3D) {
-        camera3D.position.set(12000, 8000, 12000);
+        camera3D.position.set(15000, 10000, 15000);
         camera3D.lookAt(0, 0, 0);
       }
       if (earthMesh) {
