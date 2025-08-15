@@ -353,10 +353,12 @@
       position: absolute;
       bottom: 20px;
       left: 20px;
-      background: rgba(0,0,0,0.9);
+      background: rgba(0,0,0,0.95);
       border: 1px solid #333333;
       padding: 10px;
       font-size: 11px;
+      z-index: 10000;
+      pointer-events: auto;
     }
     
     .legend-title {
@@ -550,6 +552,10 @@
             <div class="checkbox-group">
               <input type="checkbox" id="showFootprints" checked>
               <label for="showFootprints">Show Footprints</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="footprintSelectedOnly">
+              <label for="footprintSelectedOnly">Selected Only</label>
             </div>
             <button class="btn" id="btnApply">EXECUTE</button>
             <button class="btn" id="btnPause">PAUSE ORBITS</button>
@@ -871,6 +877,7 @@
     
     let config = {
       showFootprints: true,
+      footprintSelectedOnly: false,
       maxFootprints: 5
     };
     
@@ -1044,6 +1051,12 @@
         updateTerminalLog("CONFIG", `Footprints ${config.showFootprints ? 'enabled' : 'disabled'}`);
         updateSatellites();
       });
+      
+      document.getElementById("footprintSelectedOnly").addEventListener('change', (e) => {
+        config.footprintSelectedOnly = e.target.checked;
+        updateTerminalLog("CONFIG", `Footprint selected only ${config.footprintSelectedOnly ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
     }
     
     function setObserverLocation() {
@@ -1088,21 +1101,27 @@
     
     function init3DGlobe() {
       const container = document.getElementById('globe');
-      if (!container) return;
+      if (!container) {
+        updateTerminalLog('3D', 'ERROR: Globe container not found');
+        return;
+      }
       
       updateTerminalLog('3D', 'Initializing tactical 3D display...');
       
       // Clear previous content
       container.innerHTML = '';
       
+      // Scene setup
       scene3D = new THREE.Scene();
       scene3D.background = new THREE.Color(0x000011);
       
+      // Camera setup
       const aspect = container.clientWidth / container.clientHeight;
       camera3D = new THREE.PerspectiveCamera(50, aspect, 100, 200000);
       camera3D.position.set(20000, 15000, 20000);
       camera3D.lookAt(0, 0, 0);
       
+      // Renderer setup
       renderer3D = new THREE.WebGLRenderer({ 
         antialias: true,
         alpha: false
@@ -1110,6 +1129,8 @@
       renderer3D.setSize(container.clientWidth, container.clientHeight);
       renderer3D.setClearColor(0x000011, 1);
       container.appendChild(renderer3D.domElement);
+      
+      updateTerminalLog('3D', `Renderer created: ${container.clientWidth}x${container.clientHeight}`);
       
       // Lighting
       const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
@@ -1119,17 +1140,25 @@
       directionalLight.position.set(30000, 20000, 30000);
       scene3D.add(directionalLight);
       
+      updateTerminalLog('3D', 'Lighting configured');
+      
       createEarth();
       setupGlobeControls();
       
-      // Wait a bit then create satellites
-      setTimeout(() => {
-        create3DSatellites();
-        globe3D = true;
-        animate3D();
-      }, 500);
+      updateTerminalLog('3D', 'Earth and controls created, waiting for satellites...');
       
-      updateTerminalLog('3D', 'Tactical 3D display initialized');
+      // Wait for satellites then create them
+      setTimeout(() => {
+        if (satRecs && satRecs.length > 0) {
+          create3DSatellites();
+          globe3D = true;
+          animate3D();
+          updateTerminalLog('3D', 'Animation started');
+        } else {
+          updateTerminalLog('3D', 'No satellites available, retrying...');
+          setTimeout(() => init3DGlobe(), 2000);
+        }
+      }, 1000);
     }
     
     function createEarth() {
@@ -1179,6 +1208,8 @@
     }
     
     function create3DSatellites() {
+      updateTerminalLog('3D', `Starting satellite creation - TLE count: ${tleList.length}, SGP4 count: ${satRecs.length}`);
+      
       const validSats = satRecs.filter(r => r !== null);
       if (validSats.length === 0) {
         updateTerminalLog('3D', 'No valid satellites for 3D display, retrying...');
@@ -1186,25 +1217,30 @@
         return;
       }
       
-      updateTerminalLog('3D', `Creating ${validSats.length} tactical 3D objects...`);
+      updateTerminalLog('3D', `Found ${validSats.length} valid satellites, creating 3D objects...`);
       
       // Clear existing satellites
       satellites3D.forEach(sat => {
-        if (sat.parent) sat.parent.remove(sat);
+        if (sat.parent) {
+          sat.parent.remove(sat);
+        }
         if (sat.material) sat.material.dispose();
         if (sat.geometry) sat.geometry.dispose();
       });
       satellites3D = [];
       
-      // Much larger satellites for visibility
-      const satGeometry = new THREE.SphereGeometry(300, 16, 16);
+      // Create very large, bright satellites
+      const satGeometry = new THREE.SphereGeometry(500, 32, 32); // Even larger
       let createdCount = 0;
+      let positionedCount = 0;
+      
+      updateTerminalLog('3D', 'Geometry created, processing satellites...');
       
       satRecs.forEach((satrec, index) => {
         if (!satrec) return;
         
         try {
-          // Create bright material
+          // Create very bright, emissive material
           const material = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
             transparent: false
@@ -1217,18 +1253,20 @@
             rec: satrec
           };
           
+          createdCount++;
+          
           // Get current position
           const currentTime = new Date();
           const result = satellite.propagate(satrec, currentTime);
           
           if (result.position && !isNaN(result.position.x)) {
-            // Convert ECI to world coordinates (scale down for better view)
+            // Convert ECI to world coordinates
             const scale = 1.0;
-            satellite.position.set(
-              result.position.x * scale,
-              result.position.z * scale,
-              -result.position.y * scale
-            );
+            const x = result.position.x * scale;
+            const y = result.position.z * scale;
+            const z = -result.position.y * scale;
+            
+            satellite.position.set(x, y, z);
             
             // Calculate altitude for color
             const radius = Math.sqrt(
@@ -1238,38 +1276,40 @@
             );
             const altitude = radius - 6371;
             
-            // Color by altitude
+            // Color by altitude with bright colors
             let color;
             if (altitude > 600) {
-              color = 0xff0000; // Red
+              color = 0xff0000; // Bright Red
             } else if (altitude > 550) {
-              color = 0xffff00; // Yellow
+              color = 0xffff00; // Bright Yellow
             } else if (altitude > 500) {
-              color = 0x00ff00; // Green
+              color = 0x00ff00; // Bright Green
             } else {
-              color = 0x0000ff; // Blue
+              color = 0x0000ff; // Bright Blue
             }
             
             material.color.setHex(color);
             
             scene3D.add(satellite);
             satellites3D.push(satellite);
-            createdCount++;
+            positionedCount++;
             
-            updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} at ${altitude.toFixed(0)}km - Color: ${color.toString(16)}`);
+            if (index < 5) { // Log first 5 for debugging
+              updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} at (${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}) alt:${altitude.toFixed(0)}km color:${color.toString(16)}`);
+            }
             
           } else {
-            // Fallback positioning in orbital ring
-            const alt = 550 + (index % 3) * 50; // Vary altitude slightly
+            // Fallback positioning with guaranteed visibility
+            const alt = 550 + (index % 10) * 30; // Vary altitude
             const radius = 6371 + alt;
-            const angle = (index / tleList.length) * 2 * Math.PI;
-            const inclination = (43 + (index % 10)) * Math.PI / 180;
+            const angle = (index / Math.max(tleList.length, 1)) * 2 * Math.PI;
+            const inclination = (43 + (index % 15)) * Math.PI / 180;
             
-            satellite.position.set(
-              radius * Math.cos(angle) * Math.cos(inclination),
-              radius * Math.sin(inclination),
-              radius * Math.sin(angle) * Math.cos(inclination)
-            );
+            const x = radius * Math.cos(angle) * Math.cos(inclination);
+            const y = radius * Math.sin(inclination);
+            const z = radius * Math.sin(angle) * Math.cos(inclination);
+            
+            satellite.position.set(x, y, z);
             
             // Color by altitude
             let color = alt > 600 ? 0xff0000 : alt > 550 ? 0xffff00 : 0x00ff00;
@@ -1277,21 +1317,30 @@
             
             scene3D.add(satellite);
             satellites3D.push(satellite);
-            createdCount++;
+            positionedCount++;
             
-            updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} fallback positioned at ${alt}km`);
+            if (index < 5) { // Log first 5 fallback positions
+              updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} FALLBACK at (${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}) alt:${alt}km`);
+            }
           }
           
         } catch (e) {
-          updateTerminalLog('3D', `Error creating satellite ${index}: ${e.message}`);
+          updateTerminalLog('3D', `ERROR creating satellite ${index}: ${e.message}`);
         }
       });
       
       const globeSatsEl = document.getElementById('globe-sats');
-      if (globeSatsEl) globeSatsEl.textContent = createdCount;
+      if (globeSatsEl) globeSatsEl.textContent = positionedCount;
       
-      updateTerminalLog('3D', `SUCCESS: ${createdCount} satellites created and positioned in 3D space`);
-      updateTerminalLog('3D', `Camera at: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
+      updateTerminalLog('3D', `CREATION COMPLETE: ${createdCount} created, ${positionedCount} positioned, ${satellites3D.length} in array`);
+      updateTerminalLog('3D', `Scene children count: ${scene3D.children.length}`);
+      updateTerminalLog('3D', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
+      
+      // Force render once to see if anything appears
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+        updateTerminalLog('3D', 'Force render completed');
+      }
     }
     
     function update3DSatellites() {
@@ -1415,16 +1464,23 @@
     
     function animate3D() {
       if (currentView !== 'globe' || !globe3D) {
-        animationId = null;
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
         return;
       }
       
       animationId = requestAnimationFrame(animate3D);
       
-      // Debug logging every 60 frames
+      // Debug logging every 120 frames (every 2 seconds at 60fps)
       debugCount++;
-      if (debugCount === 60) {
-        updateTerminalLog('3D', `Animation running - ${satellites3D.length} satellites in scene`);
+      if (debugCount === 120) {
+        updateTerminalLog('3D', `Animation: ${satellites3D.length} sats, Scene: ${scene3D.children.length} objects`);
+        if (satellites3D.length > 0) {
+          const firstSat = satellites3D[0];
+          updateTerminalLog('3D', `First sat pos: (${firstSat.position.x.toFixed(0)}, ${firstSat.position.y.toFixed(0)}, ${firstSat.position.z.toFixed(0)})`);
+        }
         debugCount = 0;
       }
       
@@ -1451,7 +1507,9 @@
       }
       
       // Update satellites
-      update3DSatellites();
+      if (!orbitsPaused) {
+        update3DSatellites();
+      }
       
       // Render
       if (renderer3D && scene3D && camera3D) {
@@ -1596,8 +1654,7 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
         `, {
           autoClose: false,
-          closeOnClick: false,
-          autoPan: false
+          closeOnEscapeKey: false
         });
         
         marker.on('click', () => selectSatellite(i, t, rec, st));
@@ -1605,18 +1662,23 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
         drawn++;
         
         // Footprints
-        if (config.showFootprints && isVisible && visible <= config.maxFootprints) {
-          const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
-          L.circle([st.lat, st.lon], {
-            radius: footprintRadius * 1000,
-            color: '#00ff00',
-            weight: 2,
-            opacity: 0.6,
-            fillColor: '#00ff00',
-            fillOpacity: 0.1,
-            interactive: false,
-            dashArray: '5,10'
-          }).addTo(footprintGroup);
+        if (config.showFootprints && isVisible) {
+          // Se "Selected Only" estiver marcado, só mostra footprint do satélite selecionado
+          const shouldShowFootprint = config.footprintSelectedOnly ? isSelected : (visible <= config.maxFootprints);
+          
+          if (shouldShowFootprint) {
+            const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
+            L.circle([st.lat, st.lon], {
+              radius: footprintRadius * 1000,
+              color: isSelected ? '#ff00ff' : '#00ff00',
+              weight: 2,
+              opacity: 0.6,
+              fillColor: isSelected ? '#ff00ff' : '#00ff00',
+              fillOpacity: 0.1,
+              interactive: false,
+              dashArray: '5,10'
+            }).addTo(footprintGroup);
+          }
         }
       }
       
@@ -1652,9 +1714,6 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
     
     function selectSatellite(index, t, rec, st) {
       selectedSatellite = { index, tle: t, rec, state: st };
-      
-      // Close all existing popups
-      map.closePopup();
       
       const linkBudget = calculateLinkBudget(st.el);
       
@@ -1846,12 +1905,15 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       });
       document.getElementById(view + '-view').classList.add('active');
       
-      if (view === 'globe' && !globe3D) {
-        setTimeout(() => init3DGlobe(), 100);
-      }
-      
-      if (view === 'globe' && globe3D) {
-        animate3D();
+      if (view === 'globe') {
+        updateTerminalLog('VIEW', 'Switching to 3D Globe view');
+        if (!globe3D) {
+          updateTerminalLog('3D', 'Globe not initialized, starting initialization...');
+          setTimeout(() => init3DGlobe(), 200);
+        } else {
+          updateTerminalLog('3D', 'Globe already initialized, resuming animation');
+          animate3D();
+        }
       }
       
       updateTerminalLog('VIEW', `Display mode: ${view.toUpperCase()}`);
