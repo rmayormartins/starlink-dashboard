@@ -1657,7 +1657,10 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           closeOnEscapeKey: false
         });
         
-        marker.on('click', () => selectSatellite(i, t, rec, st));
+        marker.on('click', () => {
+          selectSatellite(i, t, rec, st);
+          marker.openPopup(); // Forçar abertura do popup
+        });
         marker.addTo(layerGroup);
         drawn++;
         
