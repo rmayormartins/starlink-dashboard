@@ -417,6 +417,14 @@
       font-size: 11px;
     }
     
+    #orbital-info.sat-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+    }
+    
     .sat-info-item {
       display: flex;
       flex-direction: column;
@@ -623,8 +631,20 @@
         <div class="legend">
           <div class="legend-title">Satellite Status</div>
           <div class="legend-item">
+            <div class="legend-color" style="background: #ff0000;"></div>
+            <span style="color: #999999;">HIGH ALT (>600km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffff00;"></div>
+            <span style="color: #999999;">MED ALT (550-600km)</span>
+          </div>
+          <div class="legend-item">
             <div class="legend-color" style="background: #00ff00;"></div>
-            <span style="color: #999999;">VISIBLE</span>
+            <span style="color: #999999;">NORM ALT (500-550km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #0000ff;"></div>
+            <span style="color: #999999;">LOW ALT (<500km)</span>
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #ff00ff;"></div>
@@ -632,7 +652,7 @@
           </div>
           <div class="legend-item">
             <div class="legend-color" style="background: #333333;"></div>
-            <span style="color: #999999;">INACTIVE</span>
+            <span style="color: #999999;">NOT VISIBLE</span>
           </div>
         </div>
       </div>
@@ -759,10 +779,15 @@
       <div class="info-card">
         <div class="card-header">Orbital Elements</div>
         <div class="card-content">
-          <div id="orbital-info" style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
-            <div class="terminal-text">NO SATELLITE SELECTED
-Click on a satellite to view
-orbital parameters and RF data</div>
+          <div id="orbital-info" class="sat-info-grid">
+            <div class="sat-info-item">
+              <span class="sat-info-label">STATUS</span>
+              <span class="sat-info-value">NO SATELLITE</span>
+            </div>
+            <div class="sat-info-item">
+              <span class="sat-info-label">ACTION</span>
+              <span class="sat-info-value">SELECT SAT</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1071,37 +1096,40 @@ orbital parameters and RF data</div>
       container.innerHTML = '';
       
       scene3D = new THREE.Scene();
-      scene3D.fog = new THREE.Fog(0x000011, 10000, 30000);
+      scene3D.background = new THREE.Color(0x000011);
       
       const aspect = container.clientWidth / container.clientHeight;
-      camera3D = new THREE.PerspectiveCamera(60, aspect, 1, 100000);
-      camera3D.position.set(15000, 10000, 15000);
+      camera3D = new THREE.PerspectiveCamera(50, aspect, 100, 200000);
+      camera3D.position.set(20000, 15000, 20000);
       camera3D.lookAt(0, 0, 0);
       
       renderer3D = new THREE.WebGLRenderer({ 
         antialias: true,
-        alpha: true
+        alpha: false
       });
       renderer3D.setSize(container.clientWidth, container.clientHeight);
       renderer3D.setClearColor(0x000011, 1);
       container.appendChild(renderer3D.domElement);
       
       // Lighting
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.8);
+      const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
       scene3D.add(ambientLight);
       
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.2);
-      directionalLight.position.set(20000, 15000, 20000);
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
+      directionalLight.position.set(30000, 20000, 30000);
       scene3D.add(directionalLight);
       
       createEarth();
-      create3DSatellites();
       setupGlobeControls();
       
-      globe3D = true;
-      animate3D();
+      // Wait a bit then create satellites
+      setTimeout(() => {
+        create3DSatellites();
+        globe3D = true;
+        animate3D();
+      }, 500);
       
-      updateTerminalLog('3D', 'Tactical 3D display online');
+      updateTerminalLog('3D', 'Tactical 3D display initialized');
     }
     
     function createEarth() {
@@ -1153,7 +1181,7 @@ orbital parameters and RF data</div>
     function create3DSatellites() {
       const validSats = satRecs.filter(r => r !== null);
       if (validSats.length === 0) {
-        updateTerminalLog('3D', 'No valid satellites for 3D display');
+        updateTerminalLog('3D', 'No valid satellites for 3D display, retrying...');
         setTimeout(create3DSatellites, 2000);
         return;
       }
@@ -1168,26 +1196,25 @@ orbital parameters and RF data</div>
       });
       satellites3D = [];
       
-      const satGeometry = new THREE.SphereGeometry(150, 16, 16);
+      // Much larger satellites for visibility
+      const satGeometry = new THREE.SphereGeometry(300, 16, 16);
+      let createdCount = 0;
       
       satRecs.forEach((satrec, index) => {
         if (!satrec) return;
         
         try {
+          // Create bright material
           const material = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
-            transparent: false,
-            opacity: 1.0
+            transparent: false
           });
-          material.emissive = new THREE.Color(0x00ff00);
-          material.emissiveIntensity = 0.5;
           
           const satellite = new THREE.Mesh(satGeometry, material);
           satellite.userData = { 
             index: index,
             tle: tleList[index],
-            rec: satrec,
-            material: material
+            rec: satrec
           };
           
           // Get current position
@@ -1195,39 +1222,76 @@ orbital parameters and RF data</div>
           const result = satellite.propagate(satrec, currentTime);
           
           if (result.position && !isNaN(result.position.x)) {
-            // Convert ECI to 3D world coordinates
+            // Convert ECI to world coordinates (scale down for better view)
+            const scale = 1.0;
             satellite.position.set(
-              result.position.x,
-              result.position.z,
-              -result.position.y
+              result.position.x * scale,
+              result.position.z * scale,
+              -result.position.y * scale
             );
+            
+            // Calculate altitude for color
+            const radius = Math.sqrt(
+              result.position.x * result.position.x + 
+              result.position.y * result.position.y + 
+              result.position.z * result.position.z
+            );
+            const altitude = radius - 6371;
+            
+            // Color by altitude
+            let color;
+            if (altitude > 600) {
+              color = 0xff0000; // Red
+            } else if (altitude > 550) {
+              color = 0xffff00; // Yellow
+            } else if (altitude > 500) {
+              color = 0x00ff00; // Green
+            } else {
+              color = 0x0000ff; // Blue
+            }
+            
+            material.color.setHex(color);
+            
+            scene3D.add(satellite);
+            satellites3D.push(satellite);
+            createdCount++;
+            
+            updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} at ${altitude.toFixed(0)}km - Color: ${color.toString(16)}`);
+            
           } else {
-            // Fallback: place in orbit at typical Starlink altitude
-            const alt = 550;
+            // Fallback positioning in orbital ring
+            const alt = 550 + (index % 3) * 50; // Vary altitude slightly
             const radius = 6371 + alt;
-            const angle = (index / satRecs.length) * 2 * Math.PI;
-            const inclination = 53 * Math.PI / 180; // Typical Starlink inclination
+            const angle = (index / tleList.length) * 2 * Math.PI;
+            const inclination = (43 + (index % 10)) * Math.PI / 180;
             
             satellite.position.set(
               radius * Math.cos(angle) * Math.cos(inclination),
               radius * Math.sin(inclination),
               radius * Math.sin(angle) * Math.cos(inclination)
             );
+            
+            // Color by altitude
+            let color = alt > 600 ? 0xff0000 : alt > 550 ? 0xffff00 : 0x00ff00;
+            material.color.setHex(color);
+            
+            scene3D.add(satellite);
+            satellites3D.push(satellite);
+            createdCount++;
+            
+            updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} fallback positioned at ${alt}km`);
           }
           
-          scene3D.add(satellite);
-          satellites3D.push(satellite);
-          
-          updateTerminalLog('3D', `Satellite ${index} positioned at (${satellite.position.x.toFixed(0)}, ${satellite.position.y.toFixed(0)}, ${satellite.position.z.toFixed(0)})`);
-          
         } catch (e) {
-          updateTerminalLog('3D', `Error creating 3D object ${index}: ${e.message}`);
+          updateTerminalLog('3D', `Error creating satellite ${index}: ${e.message}`);
         }
       });
       
       const globeSatsEl = document.getElementById('globe-sats');
-      if (globeSatsEl) globeSatsEl.textContent = satellites3D.length;
-      updateTerminalLog('3D', `${satellites3D.length} tactical objects deployed in 3D space`);
+      if (globeSatsEl) globeSatsEl.textContent = createdCount;
+      
+      updateTerminalLog('3D', `SUCCESS: ${createdCount} satellites created and positioned in 3D space`);
+      updateTerminalLog('3D', `Camera at: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
     }
     
     function update3DSatellites() {
@@ -1248,7 +1312,8 @@ orbital parameters and RF data</div>
           if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z)) return;
           
           // Update position
-          sat.position.set(pos.x, pos.z, -pos.y);
+          const scale = 1.0;
+          sat.position.set(pos.x * scale, pos.z * scale, -pos.y * scale);
           
           // Calculate altitude for color coding
           const radius = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
@@ -1267,7 +1332,7 @@ orbital parameters and RF data</div>
           }
           
           // Update visibility based on elevation
-          if (obs) {
+          if (obs && sat.material) {
             const gmst = satellite.gstime(currentTime);
             const observerGd = {
               latitude: satellite.degreesToRadians(obs.lat),
@@ -1281,15 +1346,11 @@ orbital parameters and RF data</div>
             
             const isVisible = elevation >= (obs.elevMin || 25);
             
-            if (sat.material && sat.material.color && sat.material.color.setHex) {
+            if (sat.material.color && sat.material.color.setHex) {
               if (isVisible) {
                 sat.material.color.setHex(color);
-                sat.material.emissive.setHex(color);
-                sat.material.emissiveIntensity = 0.5;
               } else {
                 sat.material.color.setHex(0x444444);
-                sat.material.emissive.setHex(0x222222);
-                sat.material.emissiveIntensity = 0.1;
               }
             }
           }
@@ -1300,10 +1361,6 @@ orbital parameters and RF data</div>
           // Silent error handling for performance
         }
       });
-      
-      if (updated > 0) {
-        updateTerminalLog('3D', `Updated ${updated} satellite positions`);
-      }
     }
     
     function setupGlobeControls() {
@@ -1354,6 +1411,7 @@ orbital parameters and RF data</div>
     
     let lastTime = 0;
     let frameCount = 0;
+    let debugCount = 0;
     
     function animate3D() {
       if (currentView !== 'globe' || !globe3D) {
@@ -1362,6 +1420,13 @@ orbital parameters and RF data</div>
       }
       
       animationId = requestAnimationFrame(animate3D);
+      
+      // Debug logging every 60 frames
+      debugCount++;
+      if (debugCount === 60) {
+        updateTerminalLog('3D', `Animation running - ${satellites3D.length} satellites in scene`);
+        debugCount = 0;
+      }
       
       // FPS counter
       frameCount++;
@@ -1480,20 +1545,31 @@ orbital parameters and RF data</div>
         const isVisible = st.el >= obs.elevMin;
         const isSelected = selectedSatellite && selectedSatellite.index === i;
         
-        // Tactical color scheme
-        let color = '#004400'; // Dark green: not visible
-        let radius = 2;
-        let opacity = 0.3;
+        // Color by altitude (same logic as 3D)
+        let color, radius, opacity;
         
         if (isSelected) {
           color = '#ff00ff'; // Magenta: selected
           radius = 5;
           opacity = 0.9;
         } else if (isVisible) {
-          color = '#00ff00'; // Bright green: visible
+          // Color by altitude for visible satellites
+          if (st.alt > 600) {
+            color = '#ff0000'; // Red: high altitude
+          } else if (st.alt > 550) {
+            color = '#ffff00'; // Yellow: medium altitude
+          } else if (st.alt > 500) {
+            color = '#00ff00'; // Green: normal altitude
+          } else {
+            color = '#0000ff'; // Blue: low altitude
+          }
           radius = 3;
-          opacity = 0.7;
+          opacity = 0.8;
           visible++;
+        } else {
+          color = '#004400'; // Dark green: not visible
+          radius = 2;
+          opacity = 0.3;
         }
         
         const marker = L.circleMarker([st.lat, st.lon], {
@@ -1518,7 +1594,11 @@ RANGE: ${(st.range/1000).toFixed(0)} km
 SPEED: ${st.speed.toFixed(2)} km/s
 FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
-        `);
+        `, {
+          autoClose: false,
+          closeOnClick: false,
+          autoPan: false
+        });
         
         marker.on('click', () => selectSatellite(i, t, rec, st));
         marker.addTo(layerGroup);
@@ -1572,6 +1652,9 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
     
     function selectSatellite(index, t, rec, st) {
       selectedSatellite = { index, tle: t, rec, state: st };
+      
+      // Close all existing popups
+      map.closePopup();
       
       const linkBudget = calculateLinkBudget(st.el);
       
@@ -1677,13 +1760,37 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
     function updateOrbitalInfo(t, rec) {
       const orbitalInfo = document.getElementById('orbital-info');
       
-      if (!t || !rec) return;
+      if (!t || !rec) {
+        orbitalInfo.innerHTML = `
+          <div class="sat-info-grid">
+            <div class="sat-info-item">
+              <span class="sat-info-label">STATUS</span>
+              <span class="sat-info-value">NO SATELLITE</span>
+            </div>
+            <div class="sat-info-item">
+              <span class="sat-info-label">ACTION</span>
+              <span class="sat-info-value">SELECT SAT</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
       
       // Extract orbital elements from TLE
       const line1 = t.line1;
       const line2 = t.line2;
       
-      if (!line1 || !line2) return;
+      if (!line1 || !line2) {
+        orbitalInfo.innerHTML = `
+          <div class="sat-info-grid">
+            <div class="sat-info-item">
+              <span class="sat-info-label">ERROR</span>
+              <span class="sat-info-value">INVALID TLE</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
       
       const inclination = parseFloat(line2.substring(8, 16));
       const raan = parseFloat(line2.substring(17, 25));
@@ -1695,16 +1802,31 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       const period = 1440 / meanMotion; // minutes
       
       orbitalInfo.innerHTML = `
-        <div class="terminal-text">
-┌─ ORBITAL ELEMENTS ─┐
-│ INCL......: ${inclination.toFixed(2)}°        │
-│ RAAN......: ${raan.toFixed(2)}°        │
-│ ECC.......: ${eccentricity.toFixed(6)}     │
-│ ARG_PER...: ${argPerigee.toFixed(2)}°        │
-│ MEAN_ANOM.: ${meanAnomaly.toFixed(2)}°        │
-│ MEAN_MOT..: ${meanMotion.toFixed(5)} rev/day │
-│ PERIOD....: ${period.toFixed(1)} min       │
-└──────────────────────┘
+        <div class="sat-info-grid">
+          <div class="sat-info-item">
+            <span class="sat-info-label">INCLINATION</span>
+            <span class="sat-info-value">${inclination.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">RAAN</span>
+            <span class="sat-info-value">${raan.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ECCENTRICITY</span>
+            <span class="sat-info-value">${eccentricity.toFixed(6)}</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ARG PERIGEE</span>
+            <span class="sat-info-value">${argPerigee.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">MEAN ANOMALY</span>
+            <span class="sat-info-value">${meanAnomaly.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">PERIOD</span>
+            <span class="sat-info-value">${period.toFixed(1)} min</span>
+          </div>
         </div>
       `;
     }
