@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <title>STARLINK TACTICAL OPERATIONS CENTER</title>
+  <title>STARLINK TACTICAL OPERATIONS</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
   <!-- Fontes -->
@@ -15,75 +15,44 @@
   <!-- Satellite.js -->
   <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
   
+  <!-- Three.js para Globo 3D -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   
   <style>
-    /* Tactical Theme */
-    :root {
-      --bg-primary: #000000;
-      --bg-secondary: #0a0a0a;
-      --bg-panel: #111111;
-      --bg-card: #1a1a1a;
-      --border-primary: #333333;
-      --border-secondary: #222222;
-      --text-primary: #ffffff;
-      --text-secondary: #999999;
-      --text-dim: #666666;
-      --accent-red: #ff0000;
-      --accent-red-dark: #990000;
-      --accent-red-glow: #ff000080;
-      --accent-blue: #0099ff;
-      --accent-yellow: #ffaa00;
-      --accent-green: #00ff00;
-    }
-    
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
     }
     
-    body {
-      font-family: 'Rajdhani', sans-serif;
-      background: var(--bg-primary);
-      color: var(--text-secondary);
-      font-size: 12px;
-      font-weight: 400;
-      overflow: hidden;
-      position: relative;
-    }
-    
-    /* Grid Pattern Background */
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0;
-      left: 0;
+    html, body {
       width: 100%;
       height: 100%;
-      background-image: 
-        linear-gradient(rgba(255,255,255,0.01) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255,255,255,0.01) 1px, transparent 1px);
-      background-size: 50px 50px;
-      pointer-events: none;
-      z-index: 1;
+      overflow: hidden;
+    }
+    
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background: #000000;
+      color: #999999;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
     }
     
     /* Header */
     .header {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
       height: 50px;
-      background: linear-gradient(to bottom, #1a1a1a, #0a0a0a);
-      border-bottom: 1px solid var(--border-primary);
+      background: #1a1a1a;
+      border-bottom: 1px solid #333333;
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 20px;
-      z-index: 1000;
+      flex-shrink: 0;
     }
     
     .header-title {
@@ -92,25 +61,25 @@
       gap: 15px;
     }
     
-    .header-title h1 {
-      font-size: 16px;
-      font-weight: 600;
-      color: var(--text-primary);
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    
     .status-indicator {
       width: 10px;
       height: 10px;
-      background: var(--accent-red);
+      background: #ff0000;
       border-radius: 50%;
-      animation: pulse-red 2s infinite;
+      animation: pulse 2s infinite;
     }
     
-    @keyframes pulse-red {
-      0%, 100% { box-shadow: 0 0 0 0 var(--accent-red); }
-      50% { box-shadow: 0 0 0 5px var(--accent-red-glow); }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
+      50% { opacity: 0.3; box-shadow: 0 0 0 10px rgba(255,0,0,0); }
+    }
+    
+    .header h1 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+      letter-spacing: 2px;
+      text-transform: uppercase;
     }
     
     .header-stats {
@@ -127,65 +96,93 @@
     
     .stat-value {
       font-size: 20px;
-      color: var(--text-primary);
+      color: #ffffff;
       font-weight: 500;
     }
     
     .stat-label {
       font-size: 10px;
-      color: var(--text-dim);
+      color: #666666;
       text-transform: uppercase;
-      letter-spacing: 1px;
     }
     
-    /* Main Layout */
+    /* View Tabs */
+    .view-tabs {
+      height: 40px;
+      background: #111111;
+      border-bottom: 1px solid #333333;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 10px;
+    }
+    
+    .tab-btn {
+      padding: 8px 20px;
+      background: #1a1a1a;
+      border: 1px solid #333333;
+      color: #999999;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .tab-btn:hover {
+      background: #222222;
+      color: #ffffff;
+    }
+    
+    .tab-btn.active {
+      background: #990000;
+      border-color: #ff0000;
+      color: #ffffff;
+    }
+    
+    /* Main Container */
     .main-container {
-      position: absolute;
-      top: 50px;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      display: grid;
-      grid-template-columns: 300px 1fr 350px;
-      gap: 1px;
-      background: var(--border-secondary);
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      background: #0a0a0a;
     }
     
     /* Left Panel */
     .left-panel {
-      background: var(--bg-secondary);
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
+      width: 300px;
+      background: #111111;
+      border-right: 1px solid #333333;
+      overflow-y: auto;
+      flex-shrink: 0;
     }
     
-    .panel-header {
-      padding: 15px;
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-primary);
+    .panel-section {
+      border-bottom: 1px solid #222222;
     }
     
-    .panel-title {
-      font-size: 12px;
-      color: var(--text-dim);
+    .section-title {
+      padding: 12px 15px;
+      background: #1a1a1a;
+      color: #999999;
+      font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 2px;
       font-weight: 600;
     }
     
-    .control-section {
+    .section-content {
       padding: 15px;
-      border-bottom: 1px solid var(--border-secondary);
     }
     
     .control-group {
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
     
     .control-label {
       display: block;
       margin-bottom: 5px;
-      color: var(--text-dim);
+      color: #666666;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -193,89 +190,98 @@
     
     .control-input {
       width: 100%;
-      padding: 8px 10px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-primary);
-      color: var(--text-primary);
+      padding: 6px 10px;
+      background: #000000;
+      border: 1px solid #333333;
+      color: #ffffff;
       font-family: 'Share Tech Mono', monospace;
       font-size: 12px;
-      transition: all 0.2s;
     }
     
     .control-input:focus {
       outline: none;
-      border-color: var(--accent-red);
-      box-shadow: 0 0 10px var(--accent-red-glow);
+      border-color: #ff0000;
     }
     
-    .checkbox-control {
+    .checkbox-group {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin: 10px 0;
-      cursor: pointer;
+      margin: 8px 0;
     }
     
-    .checkbox-control input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
-      accent-color: var(--accent-red);
-      cursor: pointer;
+    .checkbox-group input[type="checkbox"] {
+      width: 14px;
+      height: 14px;
+      accent-color: #ff0000;
     }
     
-    .checkbox-control label {
-      color: var(--text-secondary);
-      cursor: pointer;
+    .checkbox-group label {
+      color: #999999;
       text-transform: uppercase;
       font-size: 11px;
-      letter-spacing: 1px;
     }
     
-    .btn-primary {
+    .btn {
       width: 100%;
-      padding: 10px;
-      background: var(--accent-red-dark);
-      border: 1px solid var(--accent-red);
-      color: var(--text-primary);
+      padding: 8px;
+      background: #990000;
+      border: 1px solid #ff0000;
+      color: #ffffff;
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 2px;
+      letter-spacing: 1px;
       cursor: pointer;
-      transition: all 0.2s;
       font-size: 11px;
+      transition: all 0.2s;
     }
     
-    .btn-primary:hover {
-      background: var(--accent-red);
-      box-shadow: 0 0 20px var(--accent-red-glow);
+    .btn:hover {
+      background: #ff0000;
+      box-shadow: 0 0 10px rgba(255,0,0,0.5);
     }
     
-    /* Center Map */
-    .center-panel {
-      background: var(--bg-primary);
+    /* View Container */
+    .view-container {
+      flex: 1;
       position: relative;
-      overflow: hidden;
+      background: #000000;
+    }
+    
+    .view-content {
+      width: 100%;
+      height: 100%;
+      display: none;
+    }
+    
+    .view-content.active {
+      display: block;
     }
     
     #map {
       width: 100%;
       height: 100%;
-      filter: contrast(1.1) brightness(0.9);
     }
     
-    .map-overlay {
+    #globe {
+      width: 100%;
+      height: 100%;
+      background: radial-gradient(ellipse at center, #0a0a1a 0%, #000000 100%);
+    }
+    
+    /* 3D Controls */
+    .globe-controls {
       position: absolute;
       top: 20px;
-      right: 20px;
+      left: 20px;
       background: rgba(0,0,0,0.9);
-      border: 1px solid var(--border-primary);
+      border: 1px solid #333333;
       padding: 15px;
-      min-width: 200px;
-      backdrop-filter: blur(10px);
+      font-size: 11px;
     }
     
-    .overlay-title {
-      color: var(--accent-red);
+    .globe-controls-title {
+      color: #ff0000;
       font-size: 11px;
       text-transform: uppercase;
       letter-spacing: 2px;
@@ -283,10 +289,42 @@
       font-weight: 600;
     }
     
-    .overlay-data {
+    .globe-btn {
+      padding: 5px 10px;
+      background: #1a1a1a;
+      border: 1px solid #333333;
+      color: #999999;
+      font-size: 10px;
+      margin: 2px;
+      cursor: pointer;
+    }
+    
+    .globe-btn:hover {
+      background: #990000;
+      color: #ffffff;
+      border-color: #ff0000;
+    }
+    
+    /* Map Overlay */
+    .map-overlay {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.9);
+      border: 1px solid #333333;
+      padding: 15px;
+      min-width: 200px;
       font-family: 'Share Tech Mono', monospace;
       font-size: 11px;
-      line-height: 1.6;
+    }
+    
+    .overlay-title {
+      color: #ff0000;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+      font-weight: 600;
     }
     
     .data-row {
@@ -296,151 +334,32 @@
     }
     
     .data-label {
-      color: var(--text-dim);
+      color: #666666;
     }
     
     .data-value {
-      color: var(--text-primary);
+      color: #ffffff;
     }
     
-    .data-value.critical {
-      color: var(--accent-red);
-    }
-    
-    .data-value.warning {
-      color: var(--accent-yellow);
-    }
-    
-    .data-value.good {
-      color: var(--accent-green);
-    }
-    
-    /* Right Panel */
-    .right-panel {
-      background: var(--bg-secondary);
-      display: flex;
-      flex-direction: column;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-    
-    .info-card {
-      background: var(--bg-panel);
-      border-bottom: 1px solid var(--border-secondary);
-      padding: 15px;
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-    
-    .card-title {
-      color: var(--text-primary);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
-    }
-    
-    .card-status {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background: var(--text-dim);
-    }
-    
-    .card-status.active {
-      background: var(--accent-green);
-      animation: pulse-green 2s infinite;
-    }
-    
-    @keyframes pulse-green {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,0,0.7); }
-      50% { box-shadow: 0 0 0 5px rgba(0,255,0,0); }
-    }
-    
-    /* Terminal Output */
-    .terminal {
-      height: 150px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-secondary);
-      padding: 10px;
-      overflow-y: auto;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 10px;
-    }
-    
-    .terminal-line {
-      margin: 2px 0;
-      color: var(--text-secondary);
-    }
-    
-    .terminal-line .time {
-      color: var(--text-dim);
-    }
-    
-    .terminal-line .type {
-      color: var(--accent-red);
-    }
-    
-    .terminal-line .message {
-      color: var(--text-primary);
-    }
-    
-    /* Satellite Info */
-    .sat-info-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 11px;
-    }
-    
-    .sat-info-item {
-      display: flex;
-      flex-direction: column;
-    }
-    
-    .sat-info-label {
-      color: var(--text-dim);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    
-    .sat-info-value {
-      color: var(--text-primary);
-      font-size: 14px;
-      font-weight: 500;
-    }
-    
-    /* RF Analysis */
-    .rf-plot {
-      height: 180px;
-      background: var(--bg-primary);
-      border: 1px solid var(--border-secondary);
-      margin: 10px 0;
-    }
+    .data-value.good { color: #00ff00; }
+    .data-value.warning { color: #ffaa00; }
+    .data-value.critical { color: #ff0000; }
     
     /* Legend */
     .legend {
       position: absolute;
       bottom: 20px;
       left: 20px;
-      background: rgba(0,0,0,0.95);
-      border: 1px solid var(--border-primary);
+      background: rgba(0,0,0,0.9);
+      border: 1px solid #333333;
       padding: 10px;
-      backdrop-filter: blur(10px);
+      font-size: 11px;
     }
     
     .legend-title {
-      color: var(--text-dim);
+      color: #666666;
       font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 1px;
       margin-bottom: 8px;
     }
     
@@ -449,87 +368,65 @@
       align-items: center;
       gap: 8px;
       margin: 5px 0;
-      font-size: 11px;
     }
     
     .legend-color {
       width: 12px;
       height: 12px;
-      border: 1px solid var(--border-primary);
+      border: 1px solid #333333;
     }
     
-    /* Popup Style */
-    .leaflet-popup-content-wrapper {
-      background: rgba(0,0,0,0.95);
-      border: 1px solid var(--accent-red);
-      border-radius: 0;
-      backdrop-filter: blur(10px);
+    /* Right Panel */
+    .right-panel {
+      width: 350px;
+      background: #111111;
+      border-left: 1px solid #333333;
+      overflow-y: auto;
+      flex-shrink: 0;
     }
     
-    .leaflet-popup-content {
-      margin: 10px;
-      color: var(--text-primary);
-      font-family: 'Share Tech Mono', monospace;
+    .info-card {
+      border-bottom: 1px solid #222222;
+    }
+    
+    .card-header {
+      padding: 12px 15px;
+      background: #1a1a1a;
+      color: #ffffff;
       font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 600;
     }
     
-    .leaflet-popup-tip {
-      background: rgba(0,0,0,0.95);
-      border: 1px solid var(--accent-red);
+    .card-content {
+      padding: 15px;
     }
     
-    /* Leaflet Controls */
-    .leaflet-control-zoom {
-      border: 1px solid var(--border-primary) !important;
+    .terminal {
+      height: 120px;
+      background: #000000;
+      border: 1px solid #222222;
+      padding: 10px;
+      overflow-y: auto;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 10px;
     }
     
-    .leaflet-control-zoom a {
-      background: var(--bg-panel) !important;
-      color: var(--text-secondary) !important;
-      border-bottom: 1px solid var(--border-primary) !important;
+    .terminal-line {
+      margin: 2px 0;
+      color: #999999;
     }
     
-    .leaflet-control-zoom a:hover {
-      background: var(--bg-card) !important;
-      color: var(--text-primary) !important;
-    }
+    .terminal-line .time { color: #666666; }
+    .terminal-line .type { color: #ff0000; }
+    .terminal-line .message { color: #ffffff; }
     
     /* Scrollbar */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    
-    ::-webkit-scrollbar-track {
-      background: var(--bg-primary);
-    }
-    
-    ::-webkit-scrollbar-thumb {
-      background: var(--border-primary);
-      border: 1px solid var(--border-secondary);
-    }
-    
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--text-dim);
-    }
-    
-    /* Responsive */
-    @media (max-width: 1400px) {
-      .main-container {
-        grid-template-columns: 250px 1fr 300px;
-      }
-    }
-    
-    @media (max-width: 1200px) {
-      .main-container {
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr auto;
-      }
-      
-      .left-panel, .right-panel {
-        max-height: 300px;
-      }
-    }
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #000000; }
+    ::-webkit-scrollbar-thumb { background: #333333; }
+    ::-webkit-scrollbar-thumb:hover { background: #666666; }
   </style>
 </head>
 <body>
@@ -555,240 +452,489 @@
     </div>
   </div>
 
+  <!-- View Tabs -->
+  <div class="view-tabs">
+    <button class="tab-btn active" onclick="switchView('map')">2D MERCATOR</button>
+    <button class="tab-btn" onclick="switchView('globe')">3D GLOBE</button>
+  </div>
+
   <!-- Main Container -->
   <div class="main-container">
-    <!-- Left Panel - Controls -->
+    <!-- Left Panel -->
     <div class="left-panel">
-      <div class="panel-header">
-        <div class="panel-title">Target Operation</div>
+      <div class="panel-section">
+        <div class="section-title">Target Operation</div>
+        <div class="section-content">
+          <div class="control-group">
+            <label class="control-label">Latitude</label>
+            <input type="number" id="lat" class="control-input" value="-27.588" step="0.001">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Longitude</label>
+            <input type="number" id="lon" class="control-input" value="-48.613" step="0.001">
+          </div>
+          <div class="control-group">
+            <label class="control-label">Min Elevation (°)</label>
+            <input type="number" id="elevMin" class="control-input" value="25" min="0" max="90" step="5">
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="considerRain" checked>
+            <label for="considerRain">Rain Attenuation</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="showFootprints" checked>
+            <label for="showFootprints">Show Footprints</label>
+          </div>
+          <div class="checkbox-group">
+            <input type="checkbox" id="footprintOnlySelected">
+            <label for="footprintOnlySelected">Selected Only</label>
+          </div>
+          <button class="btn" id="btnApply">EXECUTE</button>
+        </div>
       </div>
       
-      <div class="control-section">
-        <div class="control-group">
-          <label class="control-label">Latitude</label>
-          <input type="number" id="lat" class="control-input" value="-27.588" step="0.001">
-        </div>
-        
-        <div class="control-group">
-          <label class="control-label">Longitude</label>
-          <input type="number" id="lon" class="control-input" value="-48.613" step="0.001">
-        </div>
-        
-        <div class="control-group">
-          <label class="control-label">Min Elevation (°)</label>
-          <input type="number" id="elevMin" class="control-input" value="25" min="0" max="90" step="5">
-        </div>
-        
-        <div class="checkbox-control">
-          <input type="checkbox" id="considerRain" checked>
-          <label for="considerRain">Rain Attenuation</label>
-        </div>
-        
-        <div class="checkbox-control">
-          <input type="checkbox" id="showFootprints" checked>
-          <label for="showFootprints">Show Footprints</label>
-        </div>
-        
-        <div class="checkbox-control">
-          <input type="checkbox" id="footprintOnlySelected">
-          <label for="footprintOnlySelected">Selected Only</label>
-        </div>
-        
-        <button class="btn-primary" id="btnApply">EXECUTE</button>
-      </div>
-      
-      <div class="panel-header">
-        <div class="panel-title">Mission Status</div>
-      </div>
-      
-      <div class="control-section">
-        <div id="visibleInfo" class="overlay-data">
-          <div class="data-row">
-            <span class="data-label">STATUS:</span>
-            <span class="data-value">INITIALIZING</span>
+      <div class="panel-section">
+        <div class="section-title">3D Controls</div>
+        <div class="section-content">
+          <button class="btn" onclick="resetGlobeView()">RESET VIEW</button>
+          <button class="btn" onclick="toggleOrbits()">TOGGLE ORBITS</button>
+          <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
+          <div style="margin-top: 10px;">
+            <label class="control-label">Speed</label>
+            <input type="range" id="speed3d" min="0" max="100" value="50" style="width: 100%;">
           </div>
         </div>
       </div>
       
-      <div class="panel-header">
-        <div class="panel-title">Handover Control</div>
-      </div>
-      
-      <div class="control-section">
-        <button class="btn-primary" id="btnHandover">ACTIVATE HANDOVER</button>
-        <div id="handoverInfo" style="margin-top: 10px; font-size: 11px; color: var(--text-secondary);">
-          HANDOVER INACTIVE
+      <div class="panel-section">
+        <div class="section-title">Mission Status</div>
+        <div class="section-content">
+          <div id="visibleInfo" style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
+            <div class="data-row">
+              <span class="data-label">STATUS:</span>
+              <span class="data-value">INITIALIZING</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Center Panel - Map -->
-    <div class="center-panel">
-      <div id="map"></div>
-      
-      <!-- Map Overlay -->
-      <div class="map-overlay">
-        <div class="overlay-title">Target Details</div>
-        <div id="targetInfo" class="overlay-data">
-          <div class="data-row">
-            <span class="data-label">SAT ID:</span>
-            <span class="data-value">---</span>
+    <!-- View Container -->
+    <div class="view-container">
+      <!-- 2D Map View -->
+      <div id="map-view" class="view-content active">
+        <div id="map"></div>
+        
+        <!-- Map Overlay -->
+        <div class="map-overlay">
+          <div class="overlay-title">Target Details</div>
+          <div id="targetInfo">
+            <div class="data-row">
+              <span class="data-label">SAT ID:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">ELEV:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">AZIM:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">RANGE:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">SNR:</span>
+              <span class="data-value">---</span>
+            </div>
           </div>
-          <div class="data-row">
-            <span class="data-label">ELEV:</span>
-            <span class="data-value">---</span>
+        </div>
+        
+        <!-- Legend -->
+        <div class="legend">
+          <div class="legend-title">Satellite Status</div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #00ff00;"></div>
+            <span style="color: #999999;">VISIBLE</span>
           </div>
-          <div class="data-row">
-            <span class="data-label">AZIM:</span>
-            <span class="data-value">---</span>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ff0000;"></div>
+            <span style="color: #999999;">SELECTED</span>
           </div>
-          <div class="data-row">
-            <span class="data-label">RANGE:</span>
-            <span class="data-value">---</span>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffffff;"></div>
+            <span style="color: #999999;">SERVING</span>
           </div>
-          <div class="data-row">
-            <span class="data-label">SNR:</span>
-            <span class="data-value">---</span>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffaa00;"></div>
+            <span style="color: #999999;">CANDIDATE</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #333333;"></div>
+            <span style="color: #999999;">INACTIVE</span>
           </div>
         </div>
       </div>
       
-      <!-- Legend -->
-      <div class="legend">
-        <div class="legend-title">Satellite Status</div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #00ff00;"></div>
-          <span style="color: var(--text-secondary);">VISIBLE</span>
+      <!-- 3D Globe View -->
+      <div id="globe-view" class="view-content">
+        <div id="globe"></div>
+        
+        <!-- 3D Controls Overlay -->
+        <div class="globe-controls">
+          <div class="globe-controls-title">3D Navigation</div>
+          <div style="color: #666666; font-size: 10px; line-height: 1.5;">
+            • LEFT CLICK: Rotate<br>
+            • RIGHT CLICK: Pan<br>
+            • SCROLL: Zoom<br>
+            • DOUBLE CLICK: Focus
+          </div>
         </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ff0000;"></div>
-          <span style="color: var(--text-secondary);">SELECTED</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ffffff;"></div>
-          <span style="color: var(--text-secondary);">SERVING</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #ffaa00;"></div>
-          <span style="color: var(--text-secondary);">CANDIDATE</span>
-        </div>
-        <div class="legend-item">
-          <div class="legend-color" style="background: #333333;"></div>
-          <span style="color: var(--text-secondary);">INACTIVE</span>
+        
+        <!-- Globe Info -->
+        <div class="map-overlay">
+          <div class="overlay-title">Globe Statistics</div>
+          <div id="globeInfo">
+            <div class="data-row">
+              <span class="data-label">SATELLITES:</span>
+              <span class="data-value" id="globe-sats">0</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">FPS:</span>
+              <span class="data-value" id="globe-fps">0</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">ROTATION:</span>
+              <span class="data-value" id="globe-rotation">OFF</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- Right Panel - Information -->
+    <!-- Right Panel -->
     <div class="right-panel">
-      <!-- Terminal Log -->
+      <!-- System Log -->
       <div class="info-card">
-        <div class="card-header">
-          <div class="card-title">System Log</div>
-          <div class="card-status"></div>
-        </div>
-        <div class="terminal" id="terminalOutput"></div>
-      </div>
-      
-      <!-- Selected Satellite -->
-      <div class="info-card">
-        <div class="card-header">
-          <div class="card-title">Satellite Data</div>
-          <div class="card-status" id="sat-status"></div>
-        </div>
-        <div id="sat-info" class="sat-info-grid">
-          <div class="sat-info-item">
-            <span class="sat-info-label">NORAD</span>
-            <span class="sat-info-value">---</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">ALTITUDE</span>
-            <span class="sat-info-value">---</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">VELOCITY</span>
-            <span class="sat-info-value">---</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">DOPPLER</span>
-            <span class="sat-info-value">---</span>
-          </div>
+        <div class="card-header">System Log</div>
+        <div class="card-content">
+          <div class="terminal" id="terminalOutput"></div>
         </div>
       </div>
       
-      <!-- RF Info -->
+      <!-- Satellite Data -->
       <div class="info-card">
-        <div class="card-header">
-          <div class="card-title">RF Analysis</div>
-          <div class="card-status"></div>
-        </div>
-        <div id="rf-info" style="font-family: 'Share Tech Mono', monospace; font-size: 11px; line-height: 1.6;">
-          <div class="data-row">
-            <span class="data-label">FREQ DL:</span>
-            <span class="data-value">10.7-12.7 GHz</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">FREQ UL:</span>
-            <span class="data-value">14.0-14.5 GHz</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">BANDWIDTH:</span>
-            <span class="data-value">250 MHz</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">MODULATION:</span>
-            <span class="data-value" id="rf-modulation">---</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">DATA RATE:</span>
-            <span class="data-value" id="rf-datarate">---</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">LINK STATUS:</span>
-            <span class="data-value" id="rf-status">---</span>
+        <div class="card-header">Satellite Data</div>
+        <div class="card-content">
+          <div id="sat-info" style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
+            <div class="data-row">
+              <span class="data-label">NORAD:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">ALT:</span>
+              <span class="data-value">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">VEL:</span>
+              <span class="data-value">---</span>
+            </div>
           </div>
         </div>
-      </div>
-      
-      <!-- Weather -->
-      <div class="info-card">
-        <div class="card-header">
-          <div class="card-title">Atmospheric Data</div>
-          <div class="card-status"></div>
-        </div>
-        <div id="weatherInfo" style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
-          <div class="data-row">
-            <span class="data-label">PRECIP:</span>
-            <span class="data-value">0.0 mm/h</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">CLOUDS:</span>
-            <span class="data-value">0%</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">HUMIDITY:</span>
-            <span class="data-value">70%</span>
-          </div>
-          <div class="data-row">
-            <span class="data-label">RAIN ATT:</span>
-            <span class="data-value">0.0 dB</span>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Plots -->
-      <div class="info-card">
-        <div class="card-header">
-          <div class="card-title">Signal Analysis</div>
-          <div class="card-status"></div>
-        </div>
-        <div id="snrPlot" class="rf-plot"></div>
-        <div id="constPlot" class="rf-plot"></div>
       </div>
     </div>
   </div>
 
   <!-- JavaScript -->
-  <script src="app-tactical.js"></script>
+  <script>
+    // Estado Global
+    let currentView = 'map';
+    let globe3D = null;
+    let scene3D, camera3D, renderer3D;
+    let earthMesh, satellites3D = [];
+    let autoRotate = false;
+    let showOrbits = false;
+    
+    // Switch entre views
+    function switchView(view) {
+      currentView = view;
+      
+      // Update tabs
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      // Update views
+      document.querySelectorAll('.view-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(view + '-view').classList.add('active');
+      
+      // Initialize 3D if needed
+      if (view === 'globe' && !globe3D) {
+        init3DGlobe();
+      }
+      
+      // Log
+      updateTerminalLog('VIEW', `Switched to ${view.toUpperCase()} view`);
+    }
+    
+    // Initialize 3D Globe
+    function init3DGlobe() {
+      const container = document.getElementById('globe');
+      
+      // Scene
+      scene3D = new THREE.Scene();
+      scene3D.fog = new THREE.Fog(0x000000, 1000, 20000);
+      
+      // Camera
+      camera3D = new THREE.PerspectiveCamera(
+        45,
+        container.clientWidth / container.clientHeight,
+        1,
+        30000
+      );
+      camera3D.position.set(0, 0, 15000);
+      
+      // Renderer
+      renderer3D = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: true
+      });
+      renderer3D.setSize(container.clientWidth, container.clientHeight);
+      renderer3D.setClearColor(0x000000, 1);
+      container.appendChild(renderer3D.domElement);
+      
+      // Lights
+      const ambientLight = new THREE.AmbientLight(0x404040);
+      scene3D.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.5);
+      directionalLight.position.set(5, 3, 5);
+      scene3D.add(directionalLight);
+      
+      // Earth
+      const earthGeometry = new THREE.SphereGeometry(6371, 32, 32);
+      const earthMaterial = new THREE.MeshPhongMaterial({
+        color: 0x1a1a2e,
+        emissive: 0x0a0a1a,
+        specular: 0x333333,
+        shininess: 5,
+        wireframe: true
+      });
+      earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+      scene3D.add(earthMesh);
+      
+      // Add grid
+      const gridHelper = new THREE.GridHelper(20000, 20, 0x333333, 0x222222);
+      gridHelper.rotation.x = Math.PI / 2;
+      scene3D.add(gridHelper);
+      
+      // Add satellites
+      create3DSatellites();
+      
+      // Controls
+      setupGlobeControls();
+      
+      // Start animation
+      animate3D();
+      
+      globe3D = true;
+      updateTerminalLog('3D', 'Globe initialized');
+    }
+    
+    // Create 3D Satellites
+    function create3DSatellites() {
+      if (!window.tleList) return;
+      
+      const satGeometry = new THREE.SphereGeometry(30, 4, 4);
+      const step = Math.ceil(window.tleList.length / 500); // Limit to 500
+      
+      for (let i = 0; i < window.tleList.length; i += step) {
+        const material = new THREE.MeshBasicMaterial({
+          color: 0x00ff00,
+          transparent: true,
+          opacity: 0.8
+        });
+        const satellite = new THREE.Mesh(satGeometry, material);
+        satellite.userData = { index: i };
+        scene3D.add(satellite);
+        satellites3D.push(satellite);
+      }
+      
+      document.getElementById('globe-sats').textContent = satellites3D.length;
+    }
+    
+    // Update 3D Satellites
+    function update3DSatellites() {
+      if (!window.satRecs) return;
+      
+      satellites3D.forEach(sat => {
+        const i = sat.userData.index;
+        const rec = window.satRecs[i];
+        if (!rec) return;
+        
+        const state = window.getSatState ? window.getSatState(rec) : null;
+        if (!state) return;
+        
+        // Convert to 3D coordinates
+        const phi = (90 - state.lat) * Math.PI / 180;
+        const theta = (state.lon + 180) * Math.PI / 180;
+        const r = 6371 + state.alt;
+        
+        sat.position.x = r * Math.sin(phi) * Math.cos(theta);
+        sat.position.z = r * Math.sin(phi) * Math.sin(theta);
+        sat.position.y = r * Math.cos(phi);
+        
+        // Color based on visibility
+        const isVisible = state.el >= (window.obs ? window.obs.elevMin : 25);
+        sat.material.color.setHex(isVisible ? 0x00ff00 : 0x333333);
+        sat.material.opacity = isVisible ? 1 : 0.3;
+      });
+    }
+    
+    // Globe Controls
+    function setupGlobeControls() {
+      const container = document.getElementById('globe');
+      let mouseDown = false;
+      let mouseX = 0;
+      let mouseY = 0;
+      
+      container.addEventListener('mousedown', (e) => {
+        mouseDown = true;
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+      
+      container.addEventListener('mousemove', (e) => {
+        if (!mouseDown) return;
+        
+        const deltaX = e.clientX - mouseX;
+        const deltaY = e.clientY - mouseY;
+        
+        earthMesh.rotation.y += deltaX * 0.01;
+        earthMesh.rotation.x += deltaY * 0.01;
+        
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+      
+      container.addEventListener('mouseup', () => {
+        mouseDown = false;
+      });
+      
+      container.addEventListener('wheel', (e) => {
+        const scale = e.deltaY > 0 ? 1.1 : 0.9;
+        camera3D.position.multiplyScalar(scale);
+      });
+    }
+    
+    // Animation Loop
+    let lastTime = 0;
+    let frameCount = 0;
+    function animate3D() {
+      if (currentView !== 'globe') return;
+      requestAnimationFrame(animate3D);
+      
+      // FPS Counter
+      frameCount++;
+      const currentTime = performance.now();
+      if (currentTime >= lastTime + 1000) {
+        document.getElementById('globe-fps').textContent = frameCount;
+        frameCount = 0;
+        lastTime = currentTime;
+      }
+      
+      // Auto rotate
+      if (autoRotate) {
+        earthMesh.rotation.y += 0.001;
+      }
+      
+      // Update satellites
+      update3DSatellites();
+      
+      // Render
+      renderer3D.render(scene3D, camera3D);
+    }
+    
+    // Control Functions
+    function resetGlobeView() {
+      if (camera3D) {
+        camera3D.position.set(0, 0, 15000);
+        camera3D.lookAt(0, 0, 0);
+      }
+      if (earthMesh) {
+        earthMesh.rotation.set(0, 0, 0);
+      }
+      updateTerminalLog('3D', 'View reset');
+    }
+    
+    function toggleOrbits() {
+      showOrbits = !showOrbits;
+      updateTerminalLog('3D', `Orbits ${showOrbits ? 'enabled' : 'disabled'}`);
+      // TODO: Implement orbit trails
+    }
+    
+    function toggleRotation() {
+      autoRotate = !autoRotate;
+      document.getElementById('globe-rotation').textContent = autoRotate ? 'ON' : 'OFF';
+      updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
+    }
+    
+    // Terminal Log Function
+    function updateTerminalLog(type, message) {
+      const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const terminal = document.getElementById('terminalOutput');
+      if (terminal) {
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        line.innerHTML = `<span class="time">[${time}]</span> <span class="type">[${type}]</span> <span class="message">${message}</span>`;
+        terminal.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+        
+        while (terminal.children.length > 100) {
+          terminal.removeChild(terminal.firstChild);
+        }
+      }
+    }
+    
+    // Update Stats
+    function updateStats(visible, tracked, total) {
+      document.getElementById('stat-visible').textContent = visible;
+      document.getElementById('stat-tracked').textContent = tracked;
+      document.getElementById('stat-total').textContent = total;
+    }
+    
+    // Window resize handler
+    window.addEventListener('resize', () => {
+      if (renderer3D && camera3D) {
+        const container = document.getElementById('globe');
+        camera3D.aspect = container.clientWidth / container.clientHeight;
+        camera3D.updateProjectionMatrix();
+        renderer3D.setSize(container.clientWidth, container.clientHeight);
+      }
+    });
+    
+    // Load main app
+    var script = document.createElement('script');
+    script.onerror = function() {
+      var fallbackScript = document.createElement('script');
+      fallbackScript.src = 'app.js';
+      document.body.appendChild(fallbackScript);
+    };
+    script.src = 'app-tactical.js';
+    document.body.appendChild(script);
+    
+    // Export functions
+    window.switchView = switchView;
+    window.resetGlobeView = resetGlobeView;
+    window.toggleOrbits = toggleOrbits;
+    window.toggleRotation = toggleRotation;
+    window.updateTerminalLog = updateTerminalLog;
+    window.updateStats = updateStats;
+  </script>
 </body>
 </html>
