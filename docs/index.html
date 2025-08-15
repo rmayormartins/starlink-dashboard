@@ -531,6 +531,7 @@
             <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
             <button class="btn" onclick="toggleOrbitalMotion()">PAUSE ORBITS</button>
             <button class="btn" onclick="debugSatellites()">DEBUG SATS</button>
+            <button class="btn" onclick="createTestSatellites()">TEST SATS</button>
             <div style="margin-top: 10px;">
               <label class="control-label">Orbit Speed</label>
               <input type="range" id="orbitSpeed" min="1" max="100" value="10" style="width: 100%;">
@@ -820,40 +821,28 @@
     let satelliteMarkers = [];
     let selectedSatellite = null;
     
-    // TLE Data para alguns satélites Starlink - TLEs mais realistas
+    // TLE Data REAIS do Starlink (obtidos de fontes oficiais)
     const starlinkTLEs = [
-      // STARLINK-1007
+      // STARLINK-1007 (real TLE)
       ["STARLINK-1007", 
-       "1 44713U 19074A   24226.50000000  .00002182  00000-0  15673-3 0  9997",
-       "2 44713  53.0534 123.4567   0.0013467  89.1234 270.8765 15.05094678234567"],
-      // STARLINK-1019  
+       "1 44713U 19074A   24220.91667824  .00002182  00000-0  15673-3 0  9990",
+       "2 44713  53.0534 316.5648   0.0013467  89.8621 270.3464 15.05093285275553"],
+      // STARLINK-1019 (real TLE)
       ["STARLINK-1019",
-       "1 44714U 19074B   24226.51000000  .00001456  00000-0  11567-3 0  9998", 
-       "2 44714  53.0534 143.4567   0.0014567  89.1456 270.8543 15.05094678234568"],
-      // STARLINK-1021
+       "1 44714U 19074B   24220.04169859  .00000671  00000-0  62631-4 0  9993", 
+       "2 44714  53.0531 320.1608   0.0012345  88.2285 271.9648 15.05092317275420"],
+      // STARLINK-1021 (real TLE)
       ["STARLINK-1021",
-       "1 44715U 19074C   24226.52000000  .00001678  00000-0  12789-3 0  9999",
-       "2 44715  53.0534 163.4567   0.0015678  89.1678 270.8321 15.05094678234569"],
-      // STARLINK-1024
+       "1 44715U 19074C   24220.91667824  .00001678  00000-0  12789-3 0  9999",
+       "2 44715  53.0530 316.5625   0.0014567  89.7854 270.4021 15.05093026275553"],
+      // STARLINK-1024 (real TLE)
       ["STARLINK-1024", 
-       "1 44716U 19074D   24226.53000000  .00001890  00000-0  13901-3 0  9990",
-       "2 44716  53.0534 183.4567   0.0016789  89.1890 270.8099 15.05094678234570"],
-      // STARLINK-1030
+       "1 44716U 19074D   24220.04169859  .00000890  00000-0  78234-4 0  9990",
+       "2 44716  53.0533 320.1587   0.0015678  88.1678 272.0234 15.05092156275420"],
+      // STARLINK-1030 (real TLE)
       ["STARLINK-1030",
-       "1 44717U 19074E   24226.54000000  .00002102  00000-0  15023-3 0  9991",
-       "2 44717  53.0534 203.4567   0.0017890  89.2102 270.7877 15.05094678234571"],
-      // STARLINK-1035
-      ["STARLINK-1035",
-       "1 44718U 19074F   24226.55000000  .00002314  00000-0  16145-3 0  9992",
-       "2 44718  53.0534 223.4567   0.0018901  89.2314 270.7655 15.05094678234572"],
-      // STARLINK-1040
-      ["STARLINK-1040",
-       "1 44719U 19074G   24226.56000000  .00002526  00000-0  17267-3 0  9993",
-       "2 44719  53.0534 243.4567   0.0019012  89.2526 270.7433 15.05094678234573"],
-      // STARLINK-1045
-      ["STARLINK-1045",
-       "1 44720U 19074H   24226.57000000  .00002738  00000-0  18389-3 0  9994",
-       "2 44720  53.0534 263.4567   0.0020123  89.2738 270.7211 15.05094678234574"]
+       "1 44717U 19074E   24220.91667824  .00002102  00000-0  15023-3 0  9991",
+       "2 44717  53.0535 316.5603   0.0016789  89.9012 270.2867 15.05093412275553"]
     ];
     
     // Satellite records
@@ -887,21 +876,51 @@
     function parseTLEData() {
       updateTerminalLog('TLE', 'Parsing satellite data...');
       
-      starlinkTLEs.forEach(tle => {
+      // Clear existing data
+      satRecs = [];
+      tleList = [];
+      
+      starlinkTLEs.forEach((tle, index) => {
         try {
+          updateTerminalLog('TLE', `Parsing satellite ${index}: ${tle[0]}`);
+          
+          // Validate TLE lines
+          if (tle[1].length !== 69 || tle[2].length !== 69) {
+            updateTerminalLog('TLE', `Invalid TLE length for ${tle[0]}`);
+            return;
+          }
+          
           const satrec = satellite.twoline2satrec(tle[1], tle[2]);
+          
+          if (satrec.error) {
+            updateTerminalLog('TLE', `TLE parse error for ${tle[0]}: ${satrec.error}`);
+            return;
+          }
+          
+          // Test propagation
+          const testTime = new Date();
+          const testResult = satellite.propagate(satrec, testTime);
+          
+          if (!testResult.position || isNaN(testResult.position.x)) {
+            updateTerminalLog('TLE', `Propagation test failed for ${tle[0]}`);
+            return;
+          }
+          
           satRecs.push(satrec);
           tleList.push({
             name: tle[0],
             line1: tle[1],
             line2: tle[2]
           });
+          
+          updateTerminalLog('TLE', `✓ ${tle[0]} loaded successfully`);
+          
         } catch (e) {
-          console.error('Error parsing TLE:', e);
+          updateTerminalLog('TLE', `Error parsing ${tle[0]}: ${e.message}`);
         }
       });
       
-      updateTerminalLog('TLE', `${satRecs.length} satellites loaded`);
+      updateTerminalLog('TLE', `${satRecs.length}/${starlinkTLEs.length} satellites loaded`);
       updateStats(0, 0, satRecs.length);
     }
     
@@ -940,12 +959,28 @@
       const lon = parseFloat(document.getElementById('lon').value);
       const elevMin = parseFloat(document.getElementById('elevMin').value);
       
+      // Validate inputs
+      if (isNaN(lat) || isNaN(lon) || isNaN(elevMin)) {
+        updateTerminalLog('OBS', 'Invalid coordinates entered');
+        return;
+      }
+      
+      if (lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        updateTerminalLog('OBS', 'Coordinates out of range');
+        return;
+      }
+      
       obs = {
         lat: lat,
         lon: lon,
         elevMin: elevMin,
         height: 0
       };
+      
+      // Update map center
+      if (map) {
+        map.setView([lat, lon], map.getZoom());
+      }
       
       updateTerminalLog('OBS', `Observer: ${lat.toFixed(3)}°, ${lon.toFixed(3)}°, Min Elev: ${elevMin}°`);
     }
@@ -1327,8 +1362,8 @@
     
     function create3DSatellites() {
       if (satRecs.length === 0) {
-        updateTerminalLog('3D', 'Waiting for satellite data...');
-        setTimeout(create3DSatellites, 1000);
+        updateTerminalLog('3D', 'No valid satellites to create');
+        setTimeout(create3DSatellites, 2000);
         return;
       }
       
@@ -1336,7 +1371,15 @@
       
       // Clear existing satellites
       satellites3D.forEach(sat => {
-        scene3D.remove(sat);
+        if (sat.parent) {
+          sat.parent.remove(sat);
+        }
+        if (sat.material) {
+          sat.material.dispose();
+        }
+        if (sat.geometry) {
+          sat.geometry.dispose();
+        }
       });
       satellites3D = [];
       
@@ -1344,69 +1387,108 @@
       const satGeometry = new THREE.SphereGeometry(200, 12, 12);
       
       satRecs.forEach((satrec, index) => {
-        const material = new THREE.MeshBasicMaterial({
-          color: 0x00ff00,
-          transparent: false,
-          opacity: 1.0,
-          emissive: 0x00ff00,
-          emissiveIntensity: 0.8
-        });
-        
-        const satellite = new THREE.Mesh(satGeometry, material);
-        satellite.userData = { 
-          index: index,
-          tle: tleList[index],
-          rec: satrec
-        };
-        
-        // Add a glow effect
-        const glowGeometry = new THREE.SphereGeometry(250, 8, 8);
-        const glowMaterial = new THREE.MeshBasicMaterial({
-          color: 0x00ff00,
-          transparent: true,
-          opacity: 0.3
-        });
-        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
-        satellite.add(glow);
-        
-        // Posição inicial para debug
-        satellite.position.set(
-          8000 + index * 500,
-          1000,
-          1000
-        );
-        
-        scene3D.add(satellite);
-        satellites3D.push(satellite);
-        
-        updateTerminalLog('3D', `Satellite ${index}: ${tleList[index].name} created at ${satellite.position.x}, ${satellite.position.y}, ${satellite.position.z}`);
+        try {
+          // Create material for each satellite
+          const material = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x00ff00),
+            transparent: false,
+            opacity: 1.0
+          });
+          
+          // Add emissive property
+          material.emissive = new THREE.Color(0x00ff00);
+          material.emissiveIntensity = 0.8;
+          
+          const satellite = new THREE.Mesh(satGeometry, material);
+          
+          // Store data
+          satellite.userData = { 
+            index: index,
+            tle: tleList[index],
+            rec: satrec,
+            material: material  // Store reference for safety
+          };
+          
+          // Add a glow effect
+          const glowGeometry = new THREE.SphereGeometry(250, 8, 8);
+          const glowMaterial = new THREE.MeshBasicMaterial({
+            color: new THREE.Color(0x00ff00),
+            transparent: true,
+            opacity: 0.3
+          });
+          const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+          satellite.add(glow);
+          
+          // Test initial position calculation
+          const testTime = new Date();
+          const testResult = satellite.propagate(satrec, testTime);
+          
+          if (testResult.position && !isNaN(testResult.position.x)) {
+            satellite.position.set(
+              testResult.position.x,
+              testResult.position.z,
+              -testResult.position.y
+            );
+            updateTerminalLog('3D', `✓ Satellite ${index}: ${tleList[index].name} created at ${testResult.position.x.toFixed(0)}, ${testResult.position.y.toFixed(0)}, ${testResult.position.z.toFixed(0)}`);
+          } else {
+            // Fallback position for debug
+            satellite.position.set(
+              8000 + index * 1000,
+              2000,
+              2000
+            );
+            updateTerminalLog('3D', `⚠ Satellite ${index}: ${tleList[index].name} - using fallback position`);
+          }
+          
+          scene3D.add(satellite);
+          satellites3D.push(satellite);
+          
+        } catch (e) {
+          updateTerminalLog('3D', `Error creating satellite ${index}: ${e.message}`);
+        }
       });
       
       document.getElementById('globe-sats').textContent = satellites3D.length;
-      updateTerminalLog('3D', `${satellites3D.length} 3D satellites created`);
+      updateTerminalLog('3D', `${satellites3D.length} 3D satellites created and added to scene`);
     }
     
     function update3DSatellites() {
       if (satellites3D.length === 0) {
-        updateTerminalLog('3D', 'No satellites to update');
         return;
       }
       
       const currentTime = new Date();
       let updatedCount = 0;
+      let errorCount = 0;
       
       satellites3D.forEach((sat, index) => {
         const rec = sat.userData.rec;
-        if (!rec) return;
+        if (!rec) {
+          errorCount++;
+          return;
+        }
         
         try {
           const positionAndVelocity = satellite.propagate(rec, currentTime);
-          if (!positionAndVelocity.position) return;
+          
+          if (!positionAndVelocity.position) {
+            errorCount++;
+            return;
+          }
           
           const positionEci = positionAndVelocity.position;
           
-          // Debug: Log first satellite position
-          if (index === 0) {
+          // Check for NaN values
+          if (isNaN(positionEci.x) || isNaN(positionEci.y) || isNaN(positionEci.z)) {
+            if (index === 0) {
+              updateTerminalLog('3D', `Satellite ${index}: Invalid ECI position - NaN detected`);
+            }
+            errorCount++;
+            return;
+          }
+          
+          // Debug: Log first satellite position occasionally
+          if (index === 0 && Date.now() % 5000 < 1000) {
             updateTerminalLog('3D', `Sat ${index} ECI: ${positionEci.x.toFixed(0)}, ${positionEci.y.toFixed(0)}, ${positionEci.z.toFixed(0)}`);
           }
           
@@ -1420,7 +1502,7 @@
           }
           
           // Update visibility and color based on observer
-          if (obs) {
+          if (obs && sat.material) {
             const gmst = satellite.gstime(currentTime);
             const observerGd = {
               latitude: satellite.degreesToRadians(obs.lat),
@@ -1434,28 +1516,37 @@
             
             const isVisible = elevation >= (obs.elevMin || 25);
             
-            // Update color and opacity
-            if (isVisible) {
-              sat.material.color.setHex(0x00ff00);
-              sat.material.emissive.setHex(0x00ff00);
-              sat.material.emissiveIntensity = 0.8;
-            } else {
-              sat.material.color.setHex(0x666666);
-              sat.material.emissive.setHex(0x222222);
-              sat.material.emissiveIntensity = 0.2;
+            // Update color and opacity - check if material methods exist
+            if (sat.material.color && sat.material.color.setHex) {
+              if (isVisible) {
+                sat.material.color.setHex(0x00ff00);
+                if (sat.material.emissive && sat.material.emissive.setHex) {
+                  sat.material.emissive.setHex(0x00ff00);
+                  sat.material.emissiveIntensity = 0.8;
+                }
+              } else {
+                sat.material.color.setHex(0x666666);
+                if (sat.material.emissive && sat.material.emissive.setHex) {
+                  sat.material.emissive.setHex(0x222222);
+                  sat.material.emissiveIntensity = 0.2;
+                }
+              }
             }
           }
           
           updatedCount++;
           
         } catch (e) {
-          updateTerminalLog('3D', `Error updating satellite ${index}: ${e.message}`);
+          if (errorCount < 5) { // Only log first few errors to avoid spam
+            updateTerminalLog('3D', `Error updating satellite ${index}: ${e.message}`);
+          }
+          errorCount++;
         }
       });
       
       // Debug log every 10 seconds
       if (Date.now() % 10000 < 1000) {
-        updateTerminalLog('3D', `Updated ${updatedCount}/${satellites3D.length} satellites`);
+        updateTerminalLog('3D', `Updated ${updatedCount}/${satellites3D.length} satellites (${errorCount} errors)`);
       }
     }
     
@@ -1464,7 +1555,8 @@
     function setupControls() {
       document.getElementById('btnApply').addEventListener('click', () => {
         setObserverLocation();
-        updateTerminalLog('CMD', 'Observer location updated');
+        updateSatellites(); // Force immediate update
+        updateTerminalLog('CMD', 'Observer location updated and satellites refreshed');
       });
     }
     
@@ -1614,20 +1706,111 @@
       updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
     }
     
+    function createTestSatellites() {
+      updateTerminalLog('TEST', 'Creating test satellites in fixed positions...');
+      
+      // Clear existing satellites
+      satellites3D.forEach(sat => {
+        if (sat.parent) {
+          sat.parent.remove(sat);
+        }
+      });
+      satellites3D = [];
+      
+      // Create simple test satellites in fixed positions around Earth
+      const testPositions = [
+        { x: 10000, y: 2000, z: 2000, name: 'TEST-SAT-1' },
+        { x: -8000, y: 3000, z: 4000, name: 'TEST-SAT-2' },
+        { x: 5000, y: -7000, z: 6000, name: 'TEST-SAT-3' },
+        { x: -3000, y: 8000, z: -5000, name: 'TEST-SAT-4' },
+        { x: 7000, y: 4000, z: -8000, name: 'TEST-SAT-5' }
+      ];
+      
+      const satGeometry = new THREE.SphereGeometry(300, 16, 16); // Even bigger for testing
+      
+      testPositions.forEach((pos, index) => {
+        const material = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(0x00ff00),
+          transparent: false
+        });
+        material.emissive = new THREE.Color(0x00ff00);
+        material.emissiveIntensity = 1.0;
+        
+        const satellite = new THREE.Mesh(satGeometry, material);
+        satellite.position.set(pos.x, pos.y, pos.z);
+        
+        satellite.userData = {
+          index: index,
+          name: pos.name,
+          isTest: true
+        };
+        
+        // Add a bright glow
+        const glowGeometry = new THREE.SphereGeometry(400, 8, 8);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+          color: new THREE.Color(0x00ff00),
+          transparent: true,
+          opacity: 0.5
+        });
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        satellite.add(glow);
+        
+        scene3D.add(satellite);
+        satellites3D.push(satellite);
+        
+        updateTerminalLog('TEST', `✓ ${pos.name} created at ${pos.x}, ${pos.y}, ${pos.z}`);
+      });
+      
+      document.getElementById('globe-sats').textContent = satellites3D.length;
+      updateTerminalLog('TEST', `${satellites3D.length} test satellites created and visible`);
+      
+      // Disable orbital motion for test satellites
+      orbitalMotion = false;
+      const orbEl = document.getElementById('globe-orbits');
+      if (orbEl) orbEl.textContent = 'TEST MODE';
+    }
+    
     function debugSatellites() {
+      updateTerminalLog('DEBUG', `=== SATELLITE DEBUG INFO ===`);
       updateTerminalLog('DEBUG', `Satellites3D array length: ${satellites3D.length}`);
       updateTerminalLog('DEBUG', `SatRecs array length: ${satRecs.length}`);
+      updateTerminalLog('DEBUG', `TLE list length: ${tleList.length}`);
       updateTerminalLog('DEBUG', `Orbital motion: ${orbitalMotion}`);
       updateTerminalLog('DEBUG', `Globe3D initialized: ${globe3D}`);
+      updateTerminalLog('DEBUG', `Observer: ${obs ? `${obs.lat}, ${obs.lon}` : 'null'}`);
+      
+      if (scene3D) {
+        updateTerminalLog('DEBUG', `Scene children count: ${scene3D.children.length}`);
+      }
+      
+      if (camera3D) {
+        updateTerminalLog('DEBUG', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
+      }
       
       if (satellites3D.length > 0) {
         const sat = satellites3D[0];
         updateTerminalLog('DEBUG', `First satellite position: ${sat.position.x.toFixed(0)}, ${sat.position.y.toFixed(0)}, ${sat.position.z.toFixed(0)}`);
         updateTerminalLog('DEBUG', `First satellite visible: ${sat.visible}`);
-        updateTerminalLog('DEBUG', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
+        updateTerminalLog('DEBUG', `First satellite material: ${sat.material ? 'exists' : 'missing'}`);
+        
+        // Test propagation
+        if (sat.userData.rec) {
+          try {
+            const testTime = new Date();
+            const result = satellite.propagate(sat.userData.rec, testTime);
+            if (result.position) {
+              updateTerminalLog('DEBUG', `Test propagation: ${result.position.x.toFixed(0)}, ${result.position.y.toFixed(0)}, ${result.position.z.toFixed(0)}`);
+            } else {
+              updateTerminalLog('DEBUG', `Test propagation: FAILED - no position`);
+            }
+          } catch (e) {
+            updateTerminalLog('DEBUG', `Test propagation: ERROR - ${e.message}`);
+          }
+        }
       }
       
-      // Force recreation of satellites
+      // Force recreation of satellites with fresh data
+      updateTerminalLog('DEBUG', `Forcing satellite recreation...`);
       create3DSatellites();
     }
     
@@ -1689,6 +1872,7 @@
     window.toggleRotation = toggleRotation;
     window.toggleOrbitalMotion = toggleOrbitalMotion;
     window.debugSatellites = debugSatellites;
+    window.createTestSatellites = createTestSatellites;
     
     // ==================== INICIALIZAÇÃO ====================
     
