@@ -15,9 +15,6 @@
   <!-- Satellite.js -->
   <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
   
-  <!-- Three.js para Globo 3D -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  
   <!-- Plotly -->
   <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
   
@@ -106,38 +103,10 @@
       text-transform: uppercase;
     }
     
-    /* View Tabs */
-    .view-tabs {
-      height: 40px;
-      background: #111111;
-      border-bottom: 1px solid #333333;
-      display: flex;
-      align-items: center;
-      padding: 0 20px;
-      gap: 10px;
-    }
-    
-    .tab-btn {
-      padding: 8px 20px;
-      background: #1a1a1a;
-      border: 1px solid #333333;
-      color: #999999;
+    #meta {
       font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    
-    .tab-btn:hover {
-      background: #222222;
-      color: #ffffff;
-    }
-    
-    .tab-btn.active {
-      background: #990000;
-      border-color: #ff0000;
-      color: #ffffff;
+      color: #00ff00;
+      margin-left: 20px;
     }
     
     /* Main Container */
@@ -240,6 +209,7 @@
       cursor: pointer;
       font-size: 11px;
       transition: all 0.2s;
+      margin-bottom: 8px;
     }
     
     .btn:hover {
@@ -267,32 +237,16 @@
     .terminal-line .type { color: #ff0000; }
     .terminal-line .message { color: #ffffff; }
     
-    /* View Container */
-    .view-container {
+    /* Map Container */
+    .map-container {
       flex: 1;
       position: relative;
       background: #000000;
     }
     
-    .view-content {
-      width: 100%;
-      height: 100%;
-      display: none;
-    }
-    
-    .view-content.active {
-      display: block;
-    }
-    
     #map {
       width: 100%;
       height: 100%;
-    }
-    
-    #globe {
-      width: 100%;
-      height: 100%;
-      background: radial-gradient(ellipse at center, #0a0a1a 0%, #000000 100%);
     }
     
     /* Map Overlay */
@@ -366,17 +320,20 @@
       border: 1px solid #333333;
     }
     
-    /* Right Panel - RF Analysis Only */
+    /* Right Panel - RF Analysis */
     .right-panel {
-      width: 380px;
+      width: 400px;
       background: #111111;
       border-left: 1px solid #333333;
       overflow-y: auto;
       flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
     }
     
     .info-card {
       border-bottom: 1px solid #222222;
+      flex-shrink: 0;
     }
     
     .card-header {
@@ -425,35 +382,52 @@
       margin: 10px 0;
     }
     
-    .modulation-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin: 10px 0;
+    .terminal-text {
+      font-family: 'Share Tech Mono', monospace;
+      white-space: pre;
+      line-height: 1.3;
+      color: #00ff00;
+      font-size: 11px;
     }
     
-    .mod-item {
+    /* Weather Display */
+    .weather-display {
       background: #000000;
       border: 1px solid #333333;
-      padding: 8px;
-      text-align: center;
+      padding: 10px;
+      margin: 10px 0;
       font-family: 'Share Tech Mono', monospace;
       font-size: 10px;
     }
     
-    .mod-item.active {
-      border-color: #00ff00;
-      background: rgba(0,255,0,0.1);
+    /* Handover Notification */
+    .handover-notification {
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      z-index: 10000;
+      animation: slideIn 0.5s;
     }
     
-    .mod-name {
-      color: #ffffff;
-      font-weight: 600;
+    .terminal-box {
+      background: #000000;
+      border: 1px solid #00ff00;
+      color: #00ff00;
+      padding: 10px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 11px;
+      white-space: pre;
+      box-shadow: 0 0 20px #00ff00;
     }
     
-    .mod-rate {
-      color: #999999;
-      margin-top: 2px;
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    
+    @keyframes fadeOut {
+      from { opacity: 1; }
+      to { opacity: 0; }
     }
     
     /* Scrollbar */
@@ -469,6 +443,7 @@
     <div class="header-title">
       <div class="status-indicator"></div>
       <h1>Starlink Tactical Operations</h1>
+      <div id="meta">[INITIALIZING...]</div>
     </div>
     <div class="header-stats">
       <div class="stat-item">
@@ -484,12 +459,6 @@
         <div class="stat-label">Total</div>
       </div>
     </div>
-  </div>
-
-  <!-- View Tabs -->
-  <div class="view-tabs">
-    <button class="tab-btn active" onclick="switchView('map')">2D MERCATOR</button>
-    <button class="tab-btn" onclick="switchView('globe')">3D GLOBE</button>
   </div>
 
   <!-- Main Container -->
@@ -517,24 +486,11 @@
               <label for="showFootprints">Show Footprints</label>
             </div>
             <div class="checkbox-group">
-              <input type="checkbox" id="footprintOnlySelected">
-              <label for="footprintOnlySelected">Selected Only</label>
+              <input type="checkbox" id="considerRain" checked>
+              <label for="considerRain">Rain Attenuation</label>
             </div>
             <button class="btn" id="btnApply">EXECUTE</button>
-          </div>
-        </div>
-        
-        <div class="panel-section">
-          <div class="section-title">3D Controls</div>
-          <div class="section-content">
-            <button class="btn" onclick="resetGlobeView()">RESET VIEW</button>
-            <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
-            <button class="btn" onclick="toggleOrbitalMotion()">PAUSE ORBITS</button>
-            <button class="btn" onclick="debugSatellites()">DEBUG SATS</button>
-            <div style="margin-top: 10px;">
-              <label class="control-label">Orbit Speed</label>
-              <input type="range" id="orbitSpeed" min="1" max="100" value="10" style="width: 100%;">
-            </div>
+            <button class="btn" id="btnHandover">START HANDOVER</button>
           </div>
         </div>
         
@@ -557,6 +513,15 @@
             </div>
           </div>
         </div>
+
+        <div class="panel-section">
+          <div class="section-title">Weather Data</div>
+          <div class="section-content">
+            <div id="weatherInfo" class="weather-display">
+              <div class="terminal-text">LOADING WEATHER...</div>
+            </div>
+          </div>
+        </div>
         
         <!-- System Log -->
         <div class="panel-section">
@@ -568,101 +533,66 @@
       </div>
     </div>
 
-    <!-- View Container -->
-    <div class="view-container">
-      <!-- 2D Map View -->
-      <div id="map-view" class="view-content active">
-        <div id="map"></div>
-        
-        <!-- Map Overlay -->
-        <div class="map-overlay">
-          <div class="overlay-title">Target Details</div>
-          <div id="targetInfo">
-            <div class="data-row">
-              <span class="data-label">SAT ID:</span>
-              <span class="data-value">---</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">ELEV:</span>
-              <span class="data-value">---</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">AZIM:</span>
-              <span class="data-value">---</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">RANGE:</span>
-              <span class="data-value">---</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">SNR:</span>
-              <span class="data-value">---</span>
-            </div>
+    <!-- Map Container -->
+    <div class="map-container">
+      <div id="map"></div>
+      
+      <!-- Map Overlay -->
+      <div class="map-overlay">
+        <div class="overlay-title">Target Details</div>
+        <div id="targetInfo">
+          <div class="data-row">
+            <span class="data-label">SAT ID:</span>
+            <span class="data-value">---</span>
           </div>
-        </div>
-        
-        <!-- Legend -->
-        <div class="legend">
-          <div class="legend-title">Satellite Status</div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #00ff00;"></div>
-            <span style="color: #999999;">VISIBLE</span>
+          <div class="data-row">
+            <span class="data-label">ELEV:</span>
+            <span class="data-value">---</span>
           </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ff0000;"></div>
-            <span style="color: #999999;">SELECTED</span>
+          <div class="data-row">
+            <span class="data-label">AZIM:</span>
+            <span class="data-value">---</span>
           </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ffffff;"></div>
-            <span style="color: #999999;">SERVING</span>
+          <div class="data-row">
+            <span class="data-label">RANGE:</span>
+            <span class="data-value">---</span>
           </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ffaa00;"></div>
-            <span style="color: #999999;">CANDIDATE</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #333333;"></div>
-            <span style="color: #999999;">INACTIVE</span>
+          <div class="data-row">
+            <span class="data-label">SNR:</span>
+            <span class="data-value">---</span>
           </div>
         </div>
       </div>
       
-      <!-- 3D Globe View -->
-      <div id="globe-view" class="view-content">
-        <div id="globe"></div>
-        
-        <!-- Globe Info -->
-        <div class="map-overlay">
-          <div class="overlay-title">Globe Statistics</div>
-          <div id="globeInfo">
-            <div class="data-row">
-              <span class="data-label">SATELLITES:</span>
-              <span class="data-value" id="globe-sats">0</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">FPS:</span>
-              <span class="data-value" id="globe-fps">0</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">ROTATION:</span>
-              <span class="data-value" id="globe-rotation">OFF</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">ORBITS:</span>
-              <span class="data-value" id="globe-orbits">ACTIVE</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">TIME:</span>
-              <span class="data-value" id="globe-time">00:00:00</span>
-            </div>
-          </div>
+      <!-- Legend -->
+      <div class="legend">
+        <div class="legend-title">Satellite Status</div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #00ff00;"></div>
+          <span style="color: #999999;">VISIBLE</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffffff;"></div>
+          <span style="color: #999999;">SERVING</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ffff00;"></div>
+          <span style="color: #999999;">CANDIDATE</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #ff00ff;"></div>
+          <span style="color: #999999;">SELECTED</span>
+        </div>
+        <div class="legend-item">
+          <div class="legend-color" style="background: #333333;"></div>
+          <span style="color: #999999;">INACTIVE</span>
         </div>
       </div>
     </div>
 
     <!-- Right Panel - RF Analysis -->
     <div class="right-panel">
-      <!-- Satellite Data -->
+      <!-- Selected Satellite Data -->
       <div class="info-card">
         <div class="card-header">Satellite Data</div>
         <div class="card-content">
@@ -684,11 +614,11 @@
               <span class="sat-info-value">---</span>
             </div>
             <div class="sat-info-item">
-              <span class="sat-info-label">DOPPLER</span>
+              <span class="sat-info-label">ELEVATION</span>
               <span class="sat-info-value">---</span>
             </div>
             <div class="sat-info-item">
-              <span class="sat-info-label">PERIOD</span>
+              <span class="sat-info-label">AZIMUTH</span>
               <span class="sat-info-value">---</span>
             </div>
           </div>
@@ -709,28 +639,20 @@
               <span class="data-value">14.0-14.5 GHz</span>
             </div>
             <div class="data-row">
-              <span class="data-label">GATEWAY DL:</span>
-              <span class="data-value">17.8-19.3 GHz</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">GATEWAY UL:</span>
-              <span class="data-value">27.5-30.0 GHz</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">MODULATION:</span>
-              <span class="data-value">OFDMA</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">POLARIZATION:</span>
-              <span class="data-value">DUAL LINEAR</span>
-            </div>
-            <div class="data-row">
               <span class="data-label">SNR:</span>
               <span class="data-value" id="rf-snr">---</span>
             </div>
             <div class="data-row">
-              <span class="data-label">RSSI:</span>
-              <span class="data-value" id="rf-rssi">---</span>
+              <span class="data-label">RX POWER:</span>
+              <span class="data-value" id="rf-power">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">FSPL:</span>
+              <span class="data-value" id="rf-fspl">---</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">RAIN ATT:</span>
+              <span class="data-value" id="rf-rain">---</span>
             </div>
             <div class="data-row">
               <span class="data-label">LINK STATUS:</span>
@@ -740,87 +662,17 @@
         </div>
       </div>
       
-      <!-- Modulation & Protocol -->
+      <!-- Handover Status -->
       <div class="info-card">
-        <div class="card-header">Modulation & Protocol</div>
+        <div class="card-header">Handover Status</div>
         <div class="card-content">
-          <div class="modulation-grid">
-            <div class="mod-item active">
-              <div class="mod-name">OFDMA</div>
-              <div class="mod-rate">Primary</div>
-            </div>
-            <div class="mod-item">
-              <div class="mod-name">QPSK</div>
-              <div class="mod-rate">Backup</div>
-            </div>
-            <div class="mod-item">
-              <div class="mod-name">DVB-S2X</div>
-              <div class="mod-rate">Gateway</div>
-            </div>
-            <div class="mod-item">
-              <div class="mod-name">ADAPTIVE</div>
-              <div class="mod-rate">Auto</div>
-            </div>
-          </div>
-          <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; margin-top: 15px;">
-            <div class="data-row">
-              <span class="data-label">PROTOCOL:</span>
-              <span class="data-value">Proprietary</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">ENCRYPTION:</span>
-              <span class="data-value">End-to-End</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">FEC:</span>
-              <span class="data-value">LDPC Codes</span>
-            </div>
+          <div id="handoverInfo">
+            <div class="terminal-text">HANDOVER INACTIVE</div>
           </div>
         </div>
       </div>
       
-      <!-- User Terminal -->
-      <div class="info-card">
-        <div class="card-header">User Terminal (Dishy)</div>
-        <div class="card-content">
-          <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
-            <div class="data-row">
-              <span class="data-label">TYPE:</span>
-              <span class="data-value">PHASED ARRAY</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">DIAMETER:</span>
-              <span class="data-value">60 cm</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">ELEMENTS:</span>
-              <span class="data-value">~1000</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">SCAN RANGE:</span>
-              <span class="data-value">±45°</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">POWER:</span>
-              <span class="data-value">65-100W</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">TEMP RANGE:</span>
-              <span class="data-value">-40° to 65°C</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">POINTING:</span>
-              <span class="data-value" id="antenna-pointing">AUTO</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">STATUS:</span>
-              <span class="data-value good" id="antenna-status">TRACKING</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Signal Analysis Plots -->
+      <!-- RF Analysis Plots -->
       <div class="info-card">
         <div class="card-header">Signal Analysis</div>
         <div class="card-content">
@@ -891,15 +743,6 @@
     ];
     
     // ==================== ESTADO GLOBAL ====================
-    let currentView = 'map';
-    let globe3D = null;
-    let scene3D, camera3D, renderer3D;
-    let earthMesh, satellites3D = [];
-    let autoRotate = false;
-    let orbitalMotion = true;
-    let orbitSpeedMultiplier = 10;
-    let animationId = null;
-    
     let tleList = [];
     let satRecs = [];
     let map, layerGroup, footprintGroup;
@@ -908,9 +751,19 @@
     let isDrawing = false;
     
     let config = {
+      considerRain: true,
       showFootprints: true,
       maxFootprints: 5
     };
+    
+    // Estado para Handover
+    let handoverSimulation = false;
+    let currentServingSat = null;
+    let handoverCandidates = [];
+    
+    // Cache de clima
+    let weatherData = null;
+    let weatherLastFetch = 0;
     
     // ==================== INICIALIZAÇÃO ====================
     
@@ -929,6 +782,7 @@
         init2DMap();
         setupControls();
         setObserverLocation();
+        await fetchWeatherData();
         startSimulation();
         updateTerminalLog("SYSTEM", "TACTICAL OPERATIONS CENTER ONLINE");
       } catch (e) {
@@ -940,22 +794,24 @@
       updateTerminalLog("DATA", "Loading satellite orbital elements...");
       
       try {
-        // Tentar carregar dados externos primeiro
+        // Tentar carregar metadados primeiro
+        try {
+          const metaResponse = await fetch(META_URL);
+          if (metaResponse.ok) {
+            const meta = await metaResponse.json();
+            document.getElementById("meta").innerHTML = 
+              `[SATS: ${meta.count}] [SRC: ${meta.source}] [UPD: ${new Date(meta.updatedAt).toLocaleString('pt-BR')}]`;
+            updateTerminalLog("DATA", `Metadata loaded: ${meta.count} satellites`);
+          }
+        } catch (e) {
+          updateTerminalLog("WARNING", "Metadata not available");
+        }
+        
+        // Tentar carregar dados externos
         const dataResponse = await fetch(DATA_URL);
         if (dataResponse.ok) {
           tleList = await dataResponse.json();
           updateTerminalLog("DATA", `${tleList.length} TLEs loaded from external source`);
-          
-          // Tentar carregar metadados
-          try {
-            const metaResponse = await fetch(META_URL);
-            if (metaResponse.ok) {
-              const meta = await metaResponse.json();
-              updateTerminalLog("DATA", `Metadata: ${meta.count} satellites, source: ${meta.source}`);
-            }
-          } catch (e) {
-            updateTerminalLog("WARNING", "Metadata not available");
-          }
         } else {
           throw new Error("External data not available");
         }
@@ -965,6 +821,7 @@
         updateTerminalLog("DATA", "Switching to tactical fallback constellation...");
         
         tleList = FALLBACK_TLEs;
+        document.getElementById("meta").innerHTML = `[FALLBACK MODE] [SATS: ${tleList.length}] [STATUS: TACTICAL]`;
         updateTerminalLog("DATA", `${tleList.length} tactical satellites loaded from fallback`);
       }
       
@@ -1005,7 +862,6 @@
           
           satRecs.push(satrec);
           validCount++;
-          updateTerminalLog("TLE", `✓ ${tle.name} orbital mechanics verified`);
           
         } catch (e) {
           updateTerminalLog("TLE", `Error processing ${tle.name}: ${e.message}`);
@@ -1055,6 +911,7 @@
     function setupControls() {
       document.getElementById("btnApply").addEventListener('click', () => {
         setObserverLocation();
+        fetchWeatherData();
         updateSatellites();
         updateTerminalLog("CMD", "Tactical parameters updated");
       });
@@ -1064,6 +921,26 @@
         config.showFootprints = e.target.checked;
         updateTerminalLog("CONFIG", `Footprints ${config.showFootprints ? 'enabled' : 'disabled'}`);
         updateSatellites();
+      });
+      
+      document.getElementById("considerRain").addEventListener('change', (e) => {
+        config.considerRain = e.target.checked;
+        updateTerminalLog("CONFIG", `Rain attenuation ${config.considerRain ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      // Handover button
+      document.getElementById("btnHandover").addEventListener('click', () => {
+        handoverSimulation = !handoverSimulation;
+        const btn = document.getElementById("btnHandover");
+        btn.textContent = handoverSimulation ? "STOP HANDOVER" : "START HANDOVER";
+        updateTerminalLog("HANDOVER", handoverSimulation ? "Simulation started" : "Simulation stopped");
+        
+        if (!handoverSimulation) {
+          currentServingSat = null;
+          handoverCandidates = [];
+          updateHandoverDisplay();
+        }
       });
     }
     
@@ -1091,6 +968,56 @@
       updateTerminalLog('OBS', `Tactical position: ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°W, Elev>${elevMin}°`);
     }
     
+    async function fetchWeatherData() {
+      const now = Date.now();
+      
+      if (weatherData && (now - weatherLastFetch) < 30 * 60 * 1000) {
+        return weatherData;
+      }
+      
+      try {
+        updateTerminalLog("WEATHER", "Fetching atmospheric data...");
+        
+        // Simular dados realistas
+        weatherData = {
+          cloudCover: Math.random() * 100,
+          precipitation: Math.random() * 10,
+          humidity: 60 + Math.random() * 30,
+          temperature: 20 + Math.random() * 15
+        };
+        
+        weatherLastFetch = now;
+        updateWeatherDisplay();
+        updateTerminalLog("WEATHER", `Precipitation: ${weatherData.precipitation.toFixed(1)}mm/h`);
+        
+      } catch (e) {
+        updateTerminalLog("ERROR", `Weather data fetch failed: ${e.message}`);
+        weatherData = { cloudCover: 0, precipitation: 0, humidity: 70, temperature: 25 };
+      }
+      
+      return weatherData;
+    }
+    
+    function updateWeatherDisplay() {
+      if (!weatherData) return;
+      
+      const weatherInfo = document.getElementById("weatherInfo");
+      if (weatherInfo) {
+        const rainAtt = config.considerRain ? calculateRainAttenuation(45, weatherData.precipitation) : 0;
+        weatherInfo.innerHTML = `
+          <div class="terminal-text">
+┌─ ATMOSPHERIC CONDITIONS ─┐
+│ CLOUDS......: ${weatherData.cloudCover.toFixed(0).padStart(3)}%       │
+│ PRECIP......: ${weatherData.precipitation.toFixed(1).padStart(4)} mm/h  │
+│ HUMIDITY....: ${weatherData.humidity.toFixed(0).padStart(3)}%       │
+│ TEMP........: ${weatherData.temperature.toFixed(1).padStart(4)}°C     │
+│ RAIN ATT....: ${rainAtt.toFixed(1).padStart(4)} dB    │
+└──────────────────────────┘
+          </div>
+        `;
+      }
+    }
+    
     function startSimulation() {
       updateTerminalLog('SIM', 'Starting real-time orbital tracking...');
       
@@ -1098,17 +1025,15 @@
       setInterval(() => {
         if (!isDrawing) {
           updateSatellites();
-          updateRFAnalysis();
+          if (handoverSimulation) simulateHandover();
         }
       }, REFRESH_MS);
       
       // Plot updates
-      setInterval(updatePlots, 5000);
+      setInterval(updateRFPlots, 5000);
       
       // Initial update
       updateSatellites();
-      updateRFAnalysis();
-      updatePlots();
     }
     
     // ==================== CÁLCULOS DE SATÉLITE ====================
@@ -1152,27 +1077,149 @@
       }
     }
     
-    function calculateLinkBudget(elevationDeg, range) {
-      const FREQ = 12e9; // Hz (Ku-band downlink)
+    function calculateLinkBudget(elevationDeg, rainAttenuation = 0) {
+      const FREQ = 11.5e9; // Hz (Ku-band downlink)
       const EIRP = 35; // dBW (satellite EIRP)
       const GAIN = 33; // dBi (user terminal gain)
       
-      // Free space path loss
-      const c = 3e8; // speed of light
-      const FSPL = 20 * Math.log10(4 * Math.PI * range * 1000 * FREQ / c);
+      // Free space path loss calculation
+      const distance = 550 / Math.sin(Math.max(elevationDeg, 1) * Math.PI / 180);
+      const FSPL = 20 * Math.log10(distance * 1000) + 20 * Math.log10(FREQ) + 92.45;
       
       // Atmospheric losses (higher at low elevations)
-      const atmosLoss = elevationDeg < 20 ? (20 - elevationDeg) * 0.5 : 0;
+      const atmosphericLoss = 0.5 / Math.sin(Math.max(elevationDeg, 5) * Math.PI / 180);
       
-      const rxPower = EIRP + GAIN - FSPL - atmosLoss;
+      // Aplicar atenuação por chuva apenas se configurado
+      const appliedRainAtt = config.considerRain ? rainAttenuation : 0;
       
-      // Calculate SNR
-      const noiseTemp = 150; // K (system noise temperature)
-      const bandwidth = 250e6; // Hz
-      const noisePower = 10 * Math.log10(1.38e-23 * noiseTemp * bandwidth * 1000); // dBm
-      const SNR = rxPower - noisePower;
+      const rxPower = EIRP - FSPL - atmosphericLoss - appliedRainAtt + GAIN;
+      const noiseFloor = -134; // dBm
+      const SNR = rxPower - noiseFloor;
       
-      return { SNR, rxPower, FSPL };
+      return { SNR, rxPower, FSPL, rainAttenuation: appliedRainAtt };
+    }
+    
+    function calculateRainAttenuation(elevation, precipitation) {
+      if (precipitation === 0 || !config.considerRain) return 0;
+      
+      const freq = 11.5; // GHz
+      const k = 0.0101 * Math.pow(freq, 2.03);
+      const alpha = 1.065;
+      
+      const slantPath = 550 / Math.sin(Math.max(elevation, 5) * Math.PI / 180);
+      const attenuation = k * Math.pow(precipitation, alpha) * Math.min(slantPath / 10, 5);
+      
+      return Math.min(attenuation, 20);
+    }
+    
+    // ==================== HANDOVER ====================
+    
+    function simulateHandover() {
+      if (!currentServingSat) {
+        const visible = [];
+        
+        for (let i = 0; i < tleList.length; i++) {
+          const rec = satRecs[i];
+          if (!rec) continue;
+          
+          const st = getSatState(rec);
+          if (!st || st.el < obs.elevMin) continue;
+          
+          const rainAtt = config.considerRain && weatherData ? 
+            calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
+          const linkBudget = calculateLinkBudget(st.el, rainAtt);
+          
+          visible.push({
+            satellite: tleList[i],
+            state: st,
+            snr: linkBudget.SNR,
+            index: i
+          });
+        }
+        
+        if (visible.length > 0) {
+          visible.sort((a, b) => b.snr - a.snr);
+          currentServingSat = visible[0];
+          handoverCandidates = visible.slice(1, 4);
+          
+          updateTerminalLog("HANDOVER", `Serving: ${currentServingSat.satellite.name} [SNR: ${currentServingSat.snr.toFixed(1)}dB]`);
+        }
+      } else {
+        const currentState = getSatState(satRecs[currentServingSat.index]);
+        
+        if (!currentState || currentState.el < obs.elevMin - 5) {
+          updateTerminalLog("HANDOVER", `Signal degradation detected on ${currentServingSat.satellite.name}`);
+          
+          if (handoverCandidates.length > 0) {
+            const newServing = handoverCandidates[0];
+            updateTerminalLog("HANDOVER", `Executing handover to ${newServing.satellite.name}`);
+            
+            showHandoverNotification(currentServingSat.satellite.name, newServing.satellite.name);
+            
+            currentServingSat = newServing;
+            handoverCandidates = handoverCandidates.slice(1);
+          } else {
+            currentServingSat = null;
+            updateTerminalLog("HANDOVER", "No candidates available - connection lost");
+          }
+        }
+      }
+      
+      updateHandoverDisplay();
+    }
+    
+    function showHandoverNotification(from, to) {
+      const notification = document.createElement("div");
+      notification.className = "handover-notification";
+      notification.innerHTML = `
+        <div class="terminal-box">
+╔════ HANDOVER EXECUTED ════╗
+║ FROM: ${from.padEnd(20)} ║
+║ TO..: ${to.padEnd(20)} ║
+╚═══════════════════════════╝
+        </div>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => {
+        notification.style.animation = "fadeOut 0.5s";
+        setTimeout(() => notification.remove(), 500);
+      }, 3000);
+    }
+    
+    function updateHandoverDisplay() {
+      const handoverInfo = document.getElementById("handoverInfo");
+      if (!handoverInfo) return;
+      
+      let html = '<div class="terminal-text">';
+      
+      if (currentServingSat) {
+        const state = getSatState(satRecs[currentServingSat.index]);
+        if (state) {
+          html += `
+┌─ SERVING SATELLITE ─┐
+│ ${(currentServingSat.satellite.name || 'UNKNOWN').padEnd(18)} │
+│ SNR: ${currentServingSat.snr.toFixed(1)} dB          │
+│ EL.: ${state.el.toFixed(1)}°             │
+└────────────────────┘
+`;
+        }
+      }
+      
+      if (handoverCandidates.length > 0) {
+        html += '\nCANDIDATES:\n';
+        handoverCandidates.forEach((c, i) => {
+          html += `${i+1}. ${c.satellite.name} [${c.snr.toFixed(1)}dB]\n`;
+        });
+      }
+      
+      if (!currentServingSat && handoverCandidates.length === 0) {
+        html += 'HANDOVER INACTIVE\nNo satellites available';
+      }
+      
+      html += '</div>';
+      handoverInfo.innerHTML = html;
     }
     
     // ==================== ATUALIZAÇÃO DE SATÉLITES ====================
@@ -1188,8 +1235,10 @@
       
       let visible = 0;
       let drawn = 0;
+      const MAX_DRAW = 1000;
+      const step = Math.ceil(tleList.length / MAX_DRAW);
       
-      for (let i = 0; i < tleList.length; i++) {
+      for (let i = 0; i < tleList.length; i += step) {
         const t = tleList[i];
         const rec = satRecs[i];
         
@@ -1199,16 +1248,31 @@
         if (!st) continue;
         
         const isVisible = st.el >= obs.elevMin;
+        const isServing = currentServingSat && currentServingSat.index === i;
+        const isCandidate = handoverCandidates.some(c => c.index === i);
+        const isSelected = selectedSatellite && selectedSatellite.index === i;
         
         // Tactical color scheme
         let color = '#004400'; // Dark green: not visible
         let radius = 2;
         let opacity = 0.3;
         
-        if (isVisible) {
-          color = '#00ff00'; // Bright green: visible
+        if (isServing) {
+          color = '#ffffff'; // White: serving
+          radius = 6;
+          opacity = 1;
+        } else if (isCandidate) {
+          color = '#ffff00'; // Yellow: candidate
           radius = 4;
+          opacity = 0.8;
+        } else if (isSelected) {
+          color = '#ff00ff'; // Magenta: selected
+          radius = 5;
           opacity = 0.9;
+        } else if (isVisible) {
+          color = '#00ff00'; // Bright green: visible
+          radius = 3;
+          opacity = 0.7;
           visible++;
         }
         
@@ -1218,29 +1282,30 @@
           color: color,
           fillColor: color,
           fillOpacity: opacity,
-          opacity: opacity + 0.1
+          opacity: opacity + 0.2
         });
         
-        const linkBudget = calculateLinkBudget(st.el, st.range);
+        const rainAtt = config.considerRain && weatherData ? 
+          calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
+        const linkBudget = calculateLinkBudget(st.el, rainAtt);
         
         marker.bindPopup(`
-          <div style="color: #00ff00; font-family: 'Share Tech Mono', monospace; font-size: 11px;">
-            <strong>${t.name || "TACTICAL_SAT"}</strong><br>
-            NORAD_ID: ${t.noradId}<br>
-            ALTITUDE: ${st.alt.toFixed(0)} km<br>
-            ELEVATION: ${st.el.toFixed(1)}°<br>
-            AZIMUTH: ${st.az.toFixed(1)}°<br>
-            RANGE: ${(st.range/1000).toFixed(0)} km<br>
-            SNR: ${linkBudget.SNR.toFixed(1)} dB<br>
-            STATUS: ${isVisible ? 'VISIBLE' : 'BELOW_HORIZON'}
+          <div class="terminal-popup">
+<strong>[${t.name || "SAT"}]</strong>
+NORAD: ${t.noradId}
+ALT..: ${st.alt.toFixed(0)} km
+ELEV.: ${st.el.toFixed(1)}°
+AZIM.: ${st.az.toFixed(1)}°
+SNR..: ${linkBudget.SNR.toFixed(1)} dB
+${config.considerRain ? `RAIN.: ${rainAtt.toFixed(1)} dB` : 'RAIN.: DISABLED'}
           </div>
         `);
         
-        marker.on('click', () => selectSatellite(i, st.el, st.az, st.range, st.alt));
+        marker.on('click', () => selectSatellite(i, t, rec, st));
         marker.addTo(layerGroup);
         drawn++;
         
-        // Footprints for visible satellites
+        // Footprints
         if (config.showFootprints && isVisible && visible <= config.maxFootprints) {
           const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
           L.circle([st.lat, st.lon], {
@@ -1286,29 +1351,31 @@
       return Re * psi;
     }
     
-    function selectSatellite(index, elevation, azimuth, range, altitude) {
-      selectedSatellite = index;
+    function selectSatellite(index, t, rec, st) {
+      selectedSatellite = { index, tle: t, rec, state: st };
+      
+      const rainAtt = config.considerRain && weatherData ? 
+        calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
+      const linkBudget = calculateLinkBudget(st.el, rainAtt);
       
       // Update target overlay
       const targetInfo = document.getElementById('targetInfo');
-      const linkBudget = calculateLinkBudget(elevation, range);
-      
       targetInfo.innerHTML = `
         <div class="data-row">
           <span class="data-label">SAT ID:</span>
-          <span class="data-value">${tleList[index].name}</span>
+          <span class="data-value">${t.name}</span>
         </div>
         <div class="data-row">
           <span class="data-label">ELEV:</span>
-          <span class="data-value">${elevation.toFixed(1)}°</span>
+          <span class="data-value">${st.el.toFixed(1)}°</span>
         </div>
         <div class="data-row">
           <span class="data-label">AZIM:</span>
-          <span class="data-value">${azimuth.toFixed(1)}°</span>
+          <span class="data-value">${st.az.toFixed(1)}°</span>
         </div>
         <div class="data-row">
           <span class="data-label">RANGE:</span>
-          <span class="data-value">${(range/1000).toFixed(0)} km</span>
+          <span class="data-value">${(st.range/1000).toFixed(0)} km</span>
         </div>
         <div class="data-row">
           <span class="data-label">SNR:</span>
@@ -1316,622 +1383,189 @@
         </div>
       `;
       
-      updateSatelliteInfo(index, elevation, azimuth, range);
-      updateRFAnalysis();
+      // Update satellite info panel
+      updateSatelliteInfo(index, st, linkBudget);
+      updateRFAnalysis(st, linkBudget);
+      updateRFPlots();
       
-      updateTerminalLog('TGT', `Target acquired: ${tleList[index].name} - El:${elevation.toFixed(1)}° Az:${azimuth.toFixed(1)}°`);
+      updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}]`);
+      
+      // Refresh map to update colors
+      setTimeout(() => updateSatellites(), 100);
     }
     
-    function updateSatelliteInfo(index, elevation, azimuth, range) {
+    function updateSatelliteInfo(index, st, linkBudget) {
       const satInfo = document.getElementById('sat-info');
+      const t = tleList[index];
       
-      if (!satRecs[index] || !tleList[index]) {
+      if (!t || !st) {
         updateTerminalLog('SAT', 'Invalid satellite selection');
         return;
       }
       
-      try {
-        const currentTime = new Date();
-        const positionAndVelocity = satellite.propagate(satRecs[index], currentTime);
-        
-        if (!positionAndVelocity.position || !positionAndVelocity.velocity) {
-          updateTerminalLog('SAT', 'Failed to calculate orbital state');
-          return;
-        }
-        
-        const position = positionAndVelocity.position;
-        const velocity = positionAndVelocity.velocity;
-        
-        const earthRadius = 6371;
-        const altitude = Math.sqrt(position.x*position.x + position.y*position.y + position.z*position.z) - earthRadius;
-        const speed = Math.sqrt(velocity.x*velocity.x + velocity.y*velocity.y + velocity.z*velocity.z);
-        
-        // Doppler shift calculation for 12 GHz
-        const frequency = 12e9;
-        const c = 3e8;
-        const dopplerShift = (speed * 1000 / c) * frequency;
-        
-        const period = 95.5; // minutes (typical Starlink period)
-        const noradId = tleList[index].line1.substring(2, 7);
-        
-        satInfo.innerHTML = `
-          <div class="sat-info-item">
-            <span class="sat-info-label">NORAD</span>
-            <span class="sat-info-value">${noradId}</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">NAME</span>
-            <span class="sat-info-value">${tleList[index].name.substring(0, 12)}</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">ALTITUDE</span>
-            <span class="sat-info-value">${altitude.toFixed(0)} km</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">VELOCITY</span>
-            <span class="sat-info-value">${speed.toFixed(2)} km/s</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">DOPPLER</span>
-            <span class="sat-info-value">${(dopplerShift/1000).toFixed(1)} kHz</span>
-          </div>
-          <div class="sat-info-item">
-            <span class="sat-info-label">PERIOD</span>
-            <span class="sat-info-value">${period.toFixed(1)} min</span>
-          </div>
-        `;
-        
-      } catch (e) {
-        updateTerminalLog('SAT', `Error calculating parameters: ${e.message}`);
-      }
+      const noradId = t.line1 ? t.line1.substring(2, 7) : t.noradId;
+      
+      satInfo.innerHTML = `
+        <div class="sat-info-item">
+          <span class="sat-info-label">NORAD</span>
+          <span class="sat-info-value">${noradId}</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">NAME</span>
+          <span class="sat-info-value">${(t.name || "SAT").substring(0, 12)}</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">ALTITUDE</span>
+          <span class="sat-info-value">${st.alt.toFixed(0)} km</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">VELOCITY</span>
+          <span class="sat-info-value">${st.speed.toFixed(2)} km/s</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">ELEVATION</span>
+          <span class="sat-info-value">${st.el.toFixed(1)}°</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">AZIMUTH</span>
+          <span class="sat-info-value">${st.az.toFixed(1)}°</span>
+        </div>
+      `;
     }
     
-    // ==================== ANÁLISE RF ====================
-    
-    function updateRFAnalysis() {
-      if (selectedSatellite === null || !satRecs[selectedSatellite]) {
-        document.getElementById('rf-snr').textContent = '---';
-        document.getElementById('rf-rssi').textContent = '---';
-        document.getElementById('rf-status').textContent = 'NO LINK';
-        document.getElementById('rf-status').className = 'data-value critical';
-        document.getElementById('antenna-pointing').textContent = 'SEARCH';
-        document.getElementById('antenna-status').textContent = 'STANDBY';
-        return;
+    function updateRFAnalysis(st, linkBudget) {
+      document.getElementById('rf-snr').textContent = `${linkBudget.SNR.toFixed(1)} dB`;
+      document.getElementById('rf-power').textContent = `${linkBudget.rxPower.toFixed(1)} dBm`;
+      document.getElementById('rf-fspl').textContent = `${linkBudget.FSPL.toFixed(1)} dB`;
+      document.getElementById('rf-rain').textContent = `${linkBudget.rainAttenuation.toFixed(1)} dB`;
+      
+      // Link status determination
+      let status, statusClass;
+      if (st.el < obs.elevMin) {
+        status = 'BELOW HORIZON';
+        statusClass = 'critical';
+      } else if (linkBudget.SNR > 20) {
+        status = 'EXCELLENT';
+        statusClass = 'good';
+      } else if (linkBudget.SNR > 15) {
+        status = 'GOOD';
+        statusClass = 'good';
+      } else if (linkBudget.SNR > 10) {
+        status = 'MARGINAL';
+        statusClass = 'warning';
+      } else {
+        status = 'POOR';
+        statusClass = 'critical';
       }
       
-      try {
-        const currentTime = new Date();
-        const positionAndVelocity = satellite.propagate(satRecs[selectedSatellite], currentTime);
-        
-        if (!positionAndVelocity.position) return;
-        
-        const gmst = satellite.gstime(currentTime);
-        const observerGd = {
-          latitude: satellite.degreesToRadians(obs.lat),
-          longitude: satellite.degreesToRadians(obs.lon),
-          height: obs.height
-        };
-        
-        const positionEcf = satellite.eciToEcf(positionAndVelocity.position, gmst);
-        const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
-        
-        const elevation = satellite.radiansToDegrees(lookAngles.elevation);
-        const range = lookAngles.rangeSat;
-        
-        const linkBudget = calculateLinkBudget(elevation, range);
-        
-        document.getElementById('rf-snr').textContent = `${linkBudget.SNR.toFixed(1)} dB`;
-        document.getElementById('rf-rssi').textContent = `${linkBudget.rxPower.toFixed(1)} dBm`;
-        
-        // Link status determination
-        let status, statusClass;
-        if (elevation < obs.elevMin) {
-          status = 'BELOW HORIZON';
-          statusClass = 'critical';
-        } else if (linkBudget.SNR > 20) {
-          status = 'EXCELLENT';
-          statusClass = 'good';
-        } else if (linkBudget.SNR > 15) {
-          status = 'GOOD';
-          statusClass = 'good';
-        } else if (linkBudget.SNR > 10) {
-          status = 'MARGINAL';
-          statusClass = 'warning';
-        } else {
-          status = 'POOR';
-          statusClass = 'critical';
-        }
-        
-        document.getElementById('rf-status').textContent = status;
-        document.getElementById('rf-status').className = `data-value ${statusClass}`;
-        
-        // Antenna status
-        document.getElementById('antenna-pointing').textContent = `${elevation.toFixed(1)}° EL`;
-        document.getElementById('antenna-status').textContent = elevation > obs.elevMin ? 'TRACKING' : 'SEARCH';
-        document.getElementById('antenna-status').className = elevation > obs.elevMin ? 'data-value good' : 'data-value warning';
-        
-      } catch (e) {
-        updateTerminalLog('RF', `Error in RF analysis: ${e.message}`);
-      }
+      const statusEl = document.getElementById('rf-status');
+      statusEl.textContent = status;
+      statusEl.className = `data-value ${statusClass}`;
     }
     
-    function updatePlots() {
-      if (typeof Plotly === 'undefined') return;
+    function updateRFPlots() {
+      if (typeof Plotly === 'undefined' || !selectedSatellite) return;
       
-      const timePoints = 50;
-      const snrData = [];
-      const constData = [];
+      const st = selectedSatellite.state;
+      if (!st) return;
       
-      // Generate realistic SNR time series
-      for (let i = 0; i < timePoints; i++) {
-        const time = i * 2;
-        const baseSNR = 25;
-        const scintillation = 2 * Math.sin(i * 0.3) * Math.random();
-        const trend = 3 * Math.exp(-i * 0.05);
-        
-        snrData.push({
-          x: time,
-          y: baseSNR + scintillation + trend
-        });
-      }
+      // SNR vs Elevação
+      const elevs = Array.from({length: 19}, (_, k) => k * 5);
+      const snrs = elevs.map(e => {
+        const rainAtt = config.considerRain && weatherData ? 
+          calculateRainAttenuation(e, weatherData.precipitation) : 0;
+        return calculateLinkBudget(e, rainAtt).SNR;
+      });
       
-      // Generate constellation points for OFDMA
-      for (let i = 0; i < 200; i++) {
-        const baseI = Math.round(Math.random() * 4 - 2);
-        const baseQ = Math.round(Math.random() * 4 - 2);
-        const noise = 0.1;
-        
-        constData.push({
-          x: baseI + (Math.random() - 0.5) * noise,
-          y: baseQ + (Math.random() - 0.5) * noise
-        });
-      }
-      
-      // SNR Plot
-      Plotly.newPlot('snrPlot', [{
-        x: snrData.map(d => d.x),
-        y: snrData.map(d => d.y),
-        type: 'scatter',
-        mode: 'lines+markers',
-        line: { color: '#00ff00', width: 2 },
-        marker: { size: 3, color: '#00ff00' },
-        name: 'SNR'
+      Plotly.newPlot("snrPlot", [{
+        x: elevs,
+        y: snrs,
+        mode: "lines+markers",
+        name: "SNR",
+        line: { color: "#00ff00", width: 2 },
+        marker: { color: "#00ff00", size: 4 }
       }], {
-        title: { text: 'SNR vs Time', font: { color: '#ffffff', size: 12 } },
-        paper_bgcolor: '#000000',
-        plot_bgcolor: '#000000',
-        font: { color: '#ffffff', size: 10 },
+        title: {
+          text: `SNR vs ELEVATION ${config.considerRain ? '[RAIN: ON]' : '[RAIN: OFF]'}`,
+          font: { color: "#00ff00", family: "monospace", size: 11 }
+        },
         xaxis: { 
-          gridcolor: '#333333', 
-          title: 'Time (s)', 
-          tickfont: { size: 10 }
+          title: "ELEVATION (°)", 
+          color: "#00ff00",
+          gridcolor: "#003300",
+          font: { family: "monospace", size: 10 }
         },
         yaxis: { 
-          gridcolor: '#333333', 
-          title: 'SNR (dB)', 
-          range: [15, 35],
-          tickfont: { size: 10 }
+          title: "SNR (dB)", 
+          color: "#00ff00",
+          gridcolor: "#003300",
+          font: { family: "monospace", size: 10 }
         },
-        margin: { l: 40, r: 20, t: 40, b: 40 },
-        showlegend: false
+        margin: { t: 40, l: 50, r: 20, b: 40 },
+        paper_bgcolor: "#000000",
+        plot_bgcolor: "#000000",
+        font: { color: "#00ff00", family: "monospace" }
       }, { displayModeBar: false });
       
-      // Constellation Plot
-      Plotly.newPlot('constPlot', [{
-        x: constData.map(d => d.x),
-        y: constData.map(d => d.y),
-        type: 'scatter',
-        mode: 'markers',
+      // Constelação QPSK
+      const rainAtt = config.considerRain && weatherData ? 
+        calculateRainAttenuation(st.el, weatherData.precipitation) : 0;
+      const linkBudget = calculateLinkBudget(st.el, rainAtt);
+      const noise = Math.max(0.01, 0.5 / Math.sqrt(Math.pow(10, linkBudget.SNR / 10)));
+      const xs = [], ys = [], colors = [];
+      
+      // Gerar pontos QPSK com ruído
+      for (let i = 0; i < 500; i++) {
+        const symbolIndex = i % 4;
+        const sym = [[1,1],[1,-1],[-1,1],[-1,-1]][symbolIndex];
+        
+        // Adicionar ruído gaussiano
+        const noiseX = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
+        const noiseY = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
+        
+        xs.push(sym[0] + noiseX);
+        ys.push(sym[1] + noiseY);
+        colors.push(['#00ff00', '#00ffff', '#ffff00', '#ff00ff'][symbolIndex]);
+      }
+      
+      Plotly.newPlot("constPlot", [{
+        x: xs,
+        y: ys,
+        mode: "markers",
+        type: "scatter",
         marker: { 
-          color: '#00ff00', 
+          color: colors,
           size: 3,
           opacity: 0.7
-        },
-        name: 'Constellation'
+        }
       }], {
-        title: { text: 'Constellation Diagram', font: { color: '#ffffff', size: 12 } },
-        paper_bgcolor: '#000000',
-        plot_bgcolor: '#000000',
-        font: { color: '#ffffff', size: 10 },
+        title: {
+          text: `QPSK CONSTELLATION [SNR: ${linkBudget.SNR.toFixed(1)}dB]`,
+          font: { color: "#00ff00", family: "monospace", size: 11 }
+        },
         xaxis: { 
-          gridcolor: '#333333', 
-          title: 'I', 
-          range: [-3, 3],
-          tickfont: { size: 10 }
+          range: [-2, 2],
+          scaleanchor: "y",
+          color: "#00ff00",
+          gridcolor: "#003300",
+          zeroline: true,
+          zerolinecolor: "#00ff00",
+          font: { family: "monospace", size: 10 }
         },
         yaxis: { 
-          gridcolor: '#333333', 
-          title: 'Q', 
-          range: [-3, 3],
-          tickfont: { size: 10 }
+          range: [-2, 2],
+          color: "#00ff00",
+          gridcolor: "#003300",
+          zeroline: true,
+          zerolinecolor: "#00ff00",
+          font: { family: "monospace", size: 10 }
         },
-        margin: { l: 40, r: 20, t: 40, b: 40 },
+        margin: { t: 40, l: 40, r: 40, b: 40 },
+        paper_bgcolor: "#000000",
+        plot_bgcolor: "#000000",
+        font: { color: "#00ff00", family: "monospace" },
         showlegend: false
       }, { displayModeBar: false });
-    }
-    
-    // ==================== GLOBO 3D ====================
-    
-    function init3DGlobe() {
-      const container = document.getElementById('globe');
-      if (!container) return;
-      
-      updateTerminalLog('3D', 'Initializing tactical 3D display...');
-      
-      scene3D = new THREE.Scene();
-      scene3D.fog = new THREE.Fog(0x000011, 15000, 25000);
-      
-      const aspect = container.clientWidth / container.clientHeight;
-      camera3D = new THREE.PerspectiveCamera(45, aspect, 1, 50000);
-      camera3D.position.set(12000, 8000, 12000);
-      camera3D.lookAt(0, 0, 0);
-      
-      renderer3D = new THREE.WebGLRenderer({ 
-        antialias: true,
-        alpha: true
-      });
-      renderer3D.setSize(container.clientWidth, container.clientHeight);
-      renderer3D.setClearColor(0x000011, 1);
-      container.appendChild(renderer3D.domElement);
-      
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
-      scene3D.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.0);
-      directionalLight.position.set(15000, 10000, 15000);
-      scene3D.add(directionalLight);
-      
-      createEarth();
-      create3DSatellites();
-      setupGlobeControls();
-      
-      globe3D = true;
-      animate3D();
-      
-      updateTerminalLog('3D', 'Tactical 3D display online');
-    }
-    
-    function createEarth() {
-      const earthGeometry = new THREE.SphereGeometry(6371, 64, 64);
-      const earthMaterial = new THREE.MeshPhongMaterial({
-        color: 0x2244aa,
-        emissive: 0x112244,
-        emissiveIntensity: 0.3,
-        specular: 0x444444,
-        shininess: 30,
-        transparent: true,
-        opacity: 0.9
-      });
-      
-      earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
-      scene3D.add(earthMesh);
-      
-      // Wireframe overlay
-      const wireframeGeometry = new THREE.SphereGeometry(6371, 32, 16);
-      const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00aa00,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.2
-      });
-      const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
-      earthMesh.add(wireframeMesh);
-      
-      // Observer location
-      const markerGeometry = new THREE.SphereGeometry(50, 8, 8);
-      const markerMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        emissive: 0xff0000,
-        emissiveIntensity: 0.5
-      });
-      const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-      
-      const lat = obs.lat * Math.PI / 180;
-      const lon = obs.lon * Math.PI / 180;
-      const radius = 6371 + 20;
-      
-      observerMarker.position.x = radius * Math.cos(lat) * Math.cos(lon);
-      observerMarker.position.y = radius * Math.sin(lat);
-      observerMarker.position.z = radius * Math.cos(lat) * Math.sin(lon);
-      
-      scene3D.add(observerMarker);
-    }
-    
-    function create3DSatellites() {
-      if (satRecs.filter(r => r !== null).length === 0) {
-        updateTerminalLog('3D', 'No valid satellites for 3D display');
-        setTimeout(create3DSatellites, 2000);
-        return;
-      }
-      
-      updateTerminalLog('3D', `Creating ${satRecs.filter(r => r !== null).length} tactical 3D objects...`);
-      
-      // Clear existing satellites
-      satellites3D.forEach(sat => {
-        if (sat.parent) sat.parent.remove(sat);
-        if (sat.material) sat.material.dispose();
-        if (sat.geometry) sat.geometry.dispose();
-      });
-      satellites3D = [];
-      
-      const satGeometry = new THREE.SphereGeometry(200, 12, 12);
-      
-      satRecs.forEach((satrec, index) => {
-        if (!satrec) return;
-        
-        try {
-          const material = new THREE.MeshBasicMaterial({
-            color: new THREE.Color(0x00ff00),
-            transparent: false,
-            opacity: 1.0
-          });
-          material.emissive = new THREE.Color(0x00ff00);
-          material.emissiveIntensity = 0.8;
-          
-          const satellite = new THREE.Mesh(satGeometry, material);
-          satellite.userData = { 
-            index: index,
-            tle: tleList[index],
-            rec: satrec,
-            material: material
-          };
-          
-          // Initial position calculation
-          const testTime = new Date();
-          const testResult = satellite.propagate(satrec, testTime);
-          
-          if (testResult.position && !isNaN(testResult.position.x)) {
-            satellite.position.set(
-              testResult.position.x,
-              testResult.position.z,
-              -testResult.position.y
-            );
-          } else {
-            satellite.position.set(8000 + index * 1000, 2000, 2000);
-          }
-          
-          scene3D.add(satellite);
-          satellites3D.push(satellite);
-          
-        } catch (e) {
-          updateTerminalLog('3D', `Error creating 3D object ${index}: ${e.message}`);
-        }
-      });
-      
-      document.getElementById('globe-sats').textContent = satellites3D.length;
-      updateTerminalLog('3D', `${satellites3D.length} tactical objects deployed`);
-    }
-    
-    function update3DSatellites() {
-      if (satellites3D.length === 0) return;
-      
-      const currentTime = new Date();
-      
-      satellites3D.forEach((sat, index) => {
-        const rec = sat.userData.rec;
-        if (!rec) return;
-        
-        try {
-          const positionAndVelocity = satellite.propagate(rec, currentTime);
-          if (!positionAndVelocity.position) return;
-          
-          const positionEci = positionAndVelocity.position;
-          
-          if (isNaN(positionEci.x) || isNaN(positionEci.y) || isNaN(positionEci.z)) return;
-          
-          if (orbitalMotion) {
-            sat.position.set(
-              positionEci.x,
-              positionEci.z,
-              -positionEci.y
-            );
-          }
-          
-          // Update colors based on visibility
-          if (obs && sat.material) {
-            const gmst = satellite.gstime(currentTime);
-            const observerGd = {
-              latitude: satellite.degreesToRadians(obs.lat),
-              longitude: satellite.degreesToRadians(obs.lon),
-              height: obs.height
-            };
-            
-            const positionEcf = satellite.eciToEcf(positionEci, gmst);
-            const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
-            const elevation = satellite.radiansToDegrees(lookAngles.elevation);
-            
-            const isVisible = elevation >= (obs.elevMin || 25);
-            
-            if (sat.material.color && sat.material.color.setHex) {
-              if (isVisible) {
-                sat.material.color.setHex(0x00ff00);
-                if (sat.material.emissive && sat.material.emissive.setHex) {
-                  sat.material.emissive.setHex(0x00ff00);
-                  sat.material.emissiveIntensity = 0.8;
-                }
-              } else {
-                sat.material.color.setHex(0x444444);
-                if (sat.material.emissive && sat.material.emissive.setHex) {
-                  sat.material.emissive.setHex(0x111111);
-                  sat.material.emissiveIntensity = 0.2;
-                }
-              }
-            }
-          }
-          
-        } catch (e) {
-          // Silent error handling for performance
-        }
-      });
-    }
-    
-    function setupGlobeControls() {
-      const container = document.getElementById('globe');
-      if (!container) return;
-      
-      let mouseDown = false;
-      let mouseX = 0;
-      let mouseY = 0;
-      
-      container.addEventListener('mousedown', (e) => {
-        mouseDown = true;
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-      });
-      
-      container.addEventListener('mousemove', (e) => {
-        if (!mouseDown || !camera3D) return;
-        
-        const deltaX = e.clientX - mouseX;
-        const deltaY = e.clientY - mouseY;
-        
-        const spherical = new THREE.Spherical();
-        spherical.setFromVector3(camera3D.position);
-        spherical.theta -= deltaX * 0.01;
-        spherical.phi += deltaY * 0.01;
-        spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
-        camera3D.position.setFromSpherical(spherical);
-        camera3D.lookAt(0, 0, 0);
-        
-        mouseX = e.clientX;
-        mouseY = e.clientY;
-      });
-      
-      container.addEventListener('mouseup', () => {
-        mouseDown = false;
-      });
-      
-      container.addEventListener('wheel', (e) => {
-        if (!camera3D) return;
-        const scale = e.deltaY > 0 ? 1.1 : 0.9;
-        camera3D.position.multiplyScalar(scale);
-        camera3D.position.clampLength(8000, 50000);
-      });
-    }
-    
-    let lastTime = 0;
-    let frameCount = 0;
-    
-    function animate3D() {
-      if (currentView !== 'globe' || !globe3D) {
-        animationId = null;
-        return;
-      }
-      
-      animationId = requestAnimationFrame(animate3D);
-      
-      // FPS counter
-      frameCount++;
-      const currentTime = performance.now();
-      if (currentTime >= lastTime + 1000) {
-        const fps = document.getElementById('globe-fps');
-        if (fps) fps.textContent = frameCount;
-        frameCount = 0;
-        lastTime = currentTime;
-      }
-      
-      // Time display
-      const timeEl = document.getElementById('globe-time');
-      if (timeEl) {
-        const now = new Date();
-        timeEl.textContent = now.toLocaleTimeString('pt-BR');
-      }
-      
-      // Auto rotate
-      if (autoRotate && earthMesh) {
-        earthMesh.rotation.y += 0.002;
-      }
-      
-      // Update satellites
-      update3DSatellites();
-      
-      // Render
-      if (renderer3D && scene3D && camera3D) {
-        renderer3D.render(scene3D, camera3D);
-      }
-    }
-    
-    // ==================== CONTROLES ====================
-    
-    function switchView(view) {
-      currentView = view;
-      
-      document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.remove('active');
-      });
-      event.target.classList.add('active');
-      
-      document.querySelectorAll('.view-content').forEach(content => {
-        content.classList.remove('active');
-      });
-      document.getElementById(view + '-view').classList.add('active');
-      
-      if (view === 'globe' && !globe3D) {
-        setTimeout(() => init3DGlobe(), 100);
-      }
-      
-      if (view === 'globe' && globe3D) {
-        animate3D();
-      }
-      
-      updateTerminalLog('VIEW', `Display mode: ${view.toUpperCase()}`);
-    }
-    
-    function resetGlobeView() {
-      if (camera3D) {
-        camera3D.position.set(12000, 8000, 12000);
-        camera3D.lookAt(0, 0, 0);
-      }
-      if (earthMesh) {
-        earthMesh.rotation.set(0, 0, 0);
-      }
-      updateTerminalLog('3D', 'Tactical view reset');
-    }
-    
-    function toggleRotation() {
-      autoRotate = !autoRotate;
-      const rotEl = document.getElementById('globe-rotation');
-      if (rotEl) rotEl.textContent = autoRotate ? 'ON' : 'OFF';
-      updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
-    }
-    
-    function toggleOrbitalMotion() {
-      orbitalMotion = !orbitalMotion;
-      const orbEl = document.getElementById('globe-orbits');
-      if (orbEl) orbEl.textContent = orbitalMotion ? 'ACTIVE' : 'PAUSED';
-      const btn = event.target;
-      if (btn) btn.textContent = orbitalMotion ? 'PAUSE ORBITS' : 'RESUME ORBITS';
-      updateTerminalLog('3D', `Orbital motion ${orbitalMotion ? 'active' : 'paused'}`);
-    }
-    
-    function debugSatellites() {
-      updateTerminalLog('DEBUG', `=== TACTICAL SYSTEM DEBUG ===`);
-      updateTerminalLog('DEBUG', `TLE catalog: ${tleList.length} entries`);
-      updateTerminalLog('DEBUG', `Valid SGP4 records: ${satRecs.filter(r => r !== null).length}`);
-      updateTerminalLog('DEBUG', `3D objects: ${satellites3D.length}`);
-      updateTerminalLog('DEBUG', `Current view: ${currentView}`);
-      updateTerminalLog('DEBUG', `Globe system: ${globe3D ? 'ONLINE' : 'OFFLINE'}`);
-      updateTerminalLog('DEBUG', `Observer: ${obs.lat.toFixed(3)}°, ${obs.lon.toFixed(3)}°`);
-      
-      if (satRecs.length > 0) {
-        const validIndex = satRecs.findIndex(r => r !== null);
-        if (validIndex >= 0) {
-          try {
-            const testTime = new Date();
-            const result = satellite.propagate(satRecs[validIndex], testTime);
-            if (result.position) {
-              updateTerminalLog('DEBUG', `Propagation test: SUCCESS`);
-              updateTerminalLog('DEBUG', `Position: ${result.position.x.toFixed(0)}, ${result.position.y.toFixed(0)}, ${result.position.z.toFixed(0)}`);
-            } else {
-              updateTerminalLog('DEBUG', `Propagation test: FAILED`);
-            }
-          } catch (e) {
-            updateTerminalLog('DEBUG', `Propagation error: ${e.message}`);
-          }
-        }
-      }
-      
-      updateTerminalLog('DEBUG', `=== END DEBUG OUTPUT ===`);
     }
     
     // ==================== UTILITÁRIOS ====================
@@ -1964,26 +1598,6 @@
       document.getElementById('stat-tracked').textContent = tracked || 0;
       document.getElementById('stat-total').textContent = total || 0;
     }
-    
-    // ==================== EVENT LISTENERS ====================
-    
-    window.addEventListener('resize', () => {
-      if (renderer3D && camera3D) {
-        const container = document.getElementById('globe');
-        if (container) {
-          camera3D.aspect = container.clientWidth / container.clientHeight;
-          camera3D.updateProjectionMatrix();
-          renderer3D.setSize(container.clientWidth, container.clientHeight);
-        }
-      }
-    });
-    
-    // Export functions
-    window.switchView = switchView;
-    window.resetGlobeView = resetGlobeView;
-    window.toggleRotation = toggleRotation;
-    window.toggleOrbitalMotion = toggleOrbitalMotion;
-    window.debugSatellites = debugSatellites;
     
     // ==================== INICIALIZAÇÃO ====================
     
