@@ -1,4 +1,4 @@
-// app-tactical.js - Starlink Tactical Operations Center
+// app-tactical.js - Starlink Tactical Operations with 3D Globe
 const DATA_URL = "data/starlink_tle.json";
 const META_URL = "data/meta.json";
 const REFRESH_MS = 3000;
@@ -38,6 +38,12 @@ const COLORS = {
   footprint: '#ff0000'
 };
 
+// Export para uso global
+window.tleList = tleList;
+window.satRecs = satRecs;
+window.obs = obs;
+window.getSatState = getSatState;
+
 // ============ INICIALIZAÇÃO ============
 
 async function init() {
@@ -66,6 +72,7 @@ async function init() {
     const dataResponse = await fetch(DATA_URL);
     if (!dataResponse.ok) throw new Error(`HTTP ${dataResponse.status}`);
     tleList = await dataResponse.json();
+    window.tleList = tleList; // Export global
     
     updateTerminalLog("DATA", `${tleList.length} TLEs acquired`);
     
@@ -79,6 +86,7 @@ async function init() {
         return null;
       }
     });
+    window.satRecs = satRecs; // Export global
     
     const validRecs = satRecs.filter(r => r !== null).length;
     updateTerminalLog("CALC", `${validRecs} valid orbits calculated`);
@@ -88,7 +96,7 @@ async function init() {
     return;
   }
   
-  // Configurar mapa
+  // Configurar mapa 2D
   updateTerminalLog("MAP", "Initializing tactical map...");
   initMap();
   
@@ -116,27 +124,21 @@ async function init() {
 // ============ UI FUNCTIONS ============
 
 function updateStats(visible, tracked, total) {
-  document.getElementById("stat-visible").textContent = visible;
-  document.getElementById("stat-tracked").textContent = tracked;
-  document.getElementById("stat-total").textContent = total || tleList.length;
+  if (window.updateStats) {
+    window.updateStats(visible, tracked, total);
+  } else {
+    document.getElementById("stat-visible").textContent = visible;
+    document.getElementById("stat-tracked").textContent = tracked;
+    document.getElementById("stat-total").textContent = total || tleList.length;
+  }
 }
 
 function updateTerminalLog(type, message) {
-  const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-  console.log(`[${time}] [${type}] ${message}`);
-  
-  const terminal = document.getElementById("terminalOutput");
-  if (terminal) {
-    const line = document.createElement("div");
-    line.className = "terminal-line";
-    line.innerHTML = `<span class="time">[${time}]</span> <span class="type">[${type}]</span> <span class="message">${message}</span>`;
-    terminal.appendChild(line);
-    terminal.scrollTop = terminal.scrollHeight;
-    
-    // Limitar a 100 linhas
-    while (terminal.children.length > 100) {
-      terminal.removeChild(terminal.firstChild);
-    }
+  if (window.updateTerminalLog) {
+    window.updateTerminalLog(type, message);
+  } else {
+    const time = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    console.log(`[${time}] [${type}] ${message}`);
   }
 }
 
@@ -196,7 +198,7 @@ function updateTargetInfo(sat, state, linkBudget) {
   `;
 }
 
-// ============ MAPA ============
+// ============ MAPA 2D ============
 
 function initMap() {
   // Criar mapa com tema escuro
@@ -245,6 +247,7 @@ function setupControls() {
     obs.elevMin = Number(document.getElementById("elevMin").value) || 25;
     obs.lat = Number(document.getElementById("lat").value) || -27.588;
     obs.lon = Number(document.getElementById("lon").value) || -48.613;
+    window.obs = obs; // Export global
     
     updateTerminalLog("CONFIG", `Position: [${obs.lat.toFixed(3)}, ${obs.lon.toFixed(3)}]`);
     
@@ -272,11 +275,10 @@ function setupControls() {
     drawFrame();
   };
   
-  // Botão handover
-  document.getElementById("btnHandover").onclick = () => {
-    handoverSimulation = !handoverSimulation;
-    document.getElementById("btnHandover").textContent = handoverSimulation ? "DEACTIVATE HANDOVER" : "ACTIVATE HANDOVER";
-    updateTerminalLog("HANDOVER", handoverSimulation ? "System activated" : "System deactivated");
+  // Speed control for 3D
+  document.getElementById("speed3d").onchange = (e) => {
+    const speed = e.target.value;
+    updateTerminalLog("3D", `Speed set to ${speed}%`);
   };
 }
 
@@ -394,7 +396,6 @@ async function fetchWeatherData() {
     };
     
     weatherLastFetch = now;
-    updateWeatherDisplay();
     
   } catch (e) {
     updateTerminalLog("ERROR", `Weather fetch failed: ${e.message}`);
@@ -417,57 +418,7 @@ function calculateRainAttenuation(elevation, precipitation) {
   return Math.min(attenuation, 20);
 }
 
-function updateWeatherDisplay() {
-  if (!weatherData) return;
-  
-  const weatherInfo = document.getElementById("weatherInfo");
-  if (weatherInfo) {
-    const rainAtt = config.considerRain ? calculateRainAttenuation(45, weatherData.precipitation) : 0;
-    weatherInfo.innerHTML = `
-      <div class="data-row">
-        <span class="data-label">PRECIP:</span>
-        <span class="data-value">${weatherData.precipitation.toFixed(1)} mm/h</span>
-      </div>
-      <div class="data-row">
-        <span class="data-label">CLOUDS:</span>
-        <span class="data-value">${weatherData.cloudCover.toFixed(0)}%</span>
-      </div>
-      <div class="data-row">
-        <span class="data-label">HUMIDITY:</span>
-        <span class="data-value">${weatherData.humidity.toFixed(0)}%</span>
-      </div>
-      <div class="data-row">
-        <span class="data-label">RAIN ATT:</span>
-        <span class="data-value ${rainAtt > 10 ? 'critical' : rainAtt > 5 ? 'warning' : ''}>${rainAtt.toFixed(1)} dB</span>
-      </div>
-    `;
-  }
-}
-
-// ============ HANDOVER ============
-
-function simulateHandover() {
-  // Similar ao código anterior, mas com logs tactical
-  // ... (código de handover)
-  
-  updateHandoverDisplay();
-}
-
-function updateHandoverDisplay() {
-  const handoverInfo = document.getElementById("handoverInfo");
-  if (!handoverInfo) return;
-  
-  if (currentServingSat) {
-    handoverInfo.innerHTML = `
-      <div style="color: #00ff00;">SERVING: ${currentServingSat.satellite.name}</div>
-      <div style="color: #999;">SNR: ${currentServingSat.snr.toFixed(1)} dB</div>
-    `;
-  } else {
-    handoverInfo.innerHTML = '<div style="color: #666;">NO ACTIVE CONNECTION</div>';
-  }
-}
-
-// ============ DESENHO ============
+// ============ DESENHO 2D ============
 
 function drawFrame() {
   if (isDrawing) return;
@@ -615,57 +566,45 @@ function selectSatellite(t, rec, st) {
   const satInfo = document.getElementById("sat-info");
   if (satInfo) {
     satInfo.innerHTML = `
-      <div class="sat-info-item">
-        <span class="sat-info-label">NORAD</span>
-        <span class="sat-info-value">${t.noradId}</span>
+      <div class="data-row">
+        <span class="data-label">NORAD:</span>
+        <span class="data-value">${t.noradId}</span>
       </div>
-      <div class="sat-info-item">
-        <span class="sat-info-label">ALTITUDE</span>
-        <span class="sat-info-value">${st.alt.toFixed(0)} km</span>
+      <div class="data-row">
+        <span class="data-label">NAME:</span>
+        <span class="data-value">${t.name || 'UNKNOWN'}</span>
       </div>
-      <div class="sat-info-item">
-        <span class="sat-info-label">VELOCITY</span>
-        <span class="sat-info-value">${st.speed.toFixed(1)} km/s</span>
+      <div class="data-row">
+        <span class="data-label">ALT:</span>
+        <span class="data-value">${st.alt.toFixed(0)} km</span>
       </div>
-      <div class="sat-info-item">
-        <span class="sat-info-label">DOPPLER</span>
-        <span class="sat-info-value">${st.doppler.toFixed(1)} kHz</span>
+      <div class="data-row">
+        <span class="data-label">VEL:</span>
+        <span class="data-value">${st.speed.toFixed(1)} km/s</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">DOPPLER:</span>
+        <span class="data-value">${st.doppler.toFixed(1)} kHz</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">SNR:</span>
+        <span class="data-value" style="color: ${linkBudget.SNR > 15 ? '#00ff00' : linkBudget.SNR > 8 ? '#ffaa00' : '#ff0000'}">
+          ${linkBudget.SNR.toFixed(1)} dB
+        </span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">MOD:</span>
+        <span class="data-value">${linkBudget.modulation}</span>
+      </div>
+      <div class="data-row">
+        <span class="data-label">RATE:</span>
+        <span class="data-value">${linkBudget.dataRate} Mbps</span>
       </div>
     `;
-    
-    // Status indicator
-    const satStatus = document.getElementById("sat-status");
-    if (satStatus) {
-      satStatus.classList.add("active");
-    }
-  }
-  
-  // Atualizar RF info
-  document.getElementById("rf-modulation").textContent = linkBudget.modulation;
-  document.getElementById("rf-datarate").textContent = `${linkBudget.dataRate} Mbps`;
-  
-  const statusEl = document.getElementById("rf-status");
-  if (statusEl) {
-    if (linkBudget.margin > 10) {
-      statusEl.textContent = "EXCELLENT";
-      statusEl.className = "data-value good";
-    } else if (linkBudget.margin > 5) {
-      statusEl.textContent = "GOOD";
-      statusEl.className = "data-value good";
-    } else if (linkBudget.margin > 0) {
-      statusEl.textContent = "MARGINAL";
-      statusEl.className = "data-value warning";
-    } else {
-      statusEl.textContent = "DEGRADED";
-      statusEl.className = "data-value critical";
-    }
   }
   
   // Atualizar target info
   updateTargetInfo(t, st, linkBudget);
-  
-  // Atualizar plots
-  updateRFPlots(st, linkBudget);
   
   // Log
   updateTerminalLog("SELECT", `Target acquired: ${t.name} [${t.noradId}]`);
@@ -674,123 +613,6 @@ function selectSatellite(t, rec, st) {
   if (config.showFootprints && config.footprintOnlySelected) {
     drawFrame();
   }
-}
-
-function updateRFPlots(st, linkBudget) {
-  if (typeof Plotly === 'undefined') return;
-  
-  // SNR vs Elevação
-  const elevs = Array.from({length: 19}, (_, k) => k * 5);
-  const snrs = elevs.map(e => {
-    const rainAtt = config.considerRain && weatherData ? 
-      calculateRainAttenuation(e, weatherData.precipitation) : 0;
-    return calculateLinkBudget(e, rainAtt).SNR;
-  });
-  
-  Plotly.newPlot("snrPlot", [{
-    x: elevs,
-    y: snrs,
-    mode: "lines+markers",
-    name: "SNR",
-    line: { color: "#ff0000", width: 2 },
-    marker: { 
-      color: elevs.map(e => Math.abs(e - st.el) < 2.5 ? '#ffffff' : '#ff0000'),
-      size: elevs.map(e => Math.abs(e - st.el) < 2.5 ? 8 : 4)
-    }
-  }], {
-    title: {
-      text: "SNR vs ELEVATION",
-      font: { color: "#ffffff", family: "Rajdhani", size: 12 }
-    },
-    xaxis: { 
-      title: "Elevation (°)", 
-      color: "#999999",
-      gridcolor: "#333333",
-      zerolinecolor: "#333333",
-      font: { family: "Share Tech Mono", size: 10 }
-    },
-    yaxis: { 
-      title: "SNR (dB)", 
-      color: "#999999",
-      gridcolor: "#333333",
-      zerolinecolor: "#333333",
-      font: { family: "Share Tech Mono", size: 10 }
-    },
-    margin: { t: 40, l: 50, r: 20, b: 40 },
-    paper_bgcolor: "#000000",
-    plot_bgcolor: "#0a0a0a",
-    font: { color: "#999999", family: "Rajdhani" },
-    height: 180
-  }, { displayModeBar: false });
-  
-  // Constelação
-  const noise = Math.max(0.01, 0.5 / Math.sqrt(Math.pow(10, linkBudget.SNR / 10)));
-  const xs = [], ys = [];
-  
-  let constellation = [];
-  if (linkBudget.modulation.includes("QPSK")) {
-    constellation = [[1,1],[1,-1],[-1,1],[-1,-1]];
-  } else if (linkBudget.modulation.includes("8PSK")) {
-    for (let i = 0; i < 8; i++) {
-      const angle = (i * Math.PI / 4);
-      constellation.push([Math.cos(angle), Math.sin(angle)]);
-    }
-  } else if (linkBudget.modulation.includes("16")) {
-    for (let i = -3; i <= 3; i += 2) {
-      for (let j = -3; j <= 3; j += 2) {
-        constellation.push([i/3, j/3]);
-      }
-    }
-  }
-  
-  for (let i = 0; i < 500; i++) {
-    const symIndex = i % constellation.length;
-    const sym = constellation[symIndex];
-    
-    const noiseX = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
-    const noiseY = (Math.random() + Math.random() + Math.random() - 1.5) * noise * 0.67;
-    
-    xs.push(sym[0] + noiseX);
-    ys.push(sym[1] + noiseY);
-  }
-  
-  Plotly.newPlot("constPlot", [{
-    x: xs,
-    y: ys,
-    mode: "markers",
-    type: "scatter",
-    marker: { 
-      color: "#ff0000",
-      size: 2,
-      opacity: 0.6
-    }
-  }], {
-    title: {
-      text: `${linkBudget.modulation} CONSTELLATION`,
-      font: { color: "#ffffff", family: "Rajdhani", size: 12 }
-    },
-    xaxis: { 
-      range: [-2, 2],
-      scaleanchor: "y",
-      color: "#999999",
-      gridcolor: "#333333",
-      zerolinecolor: "#666666",
-      font: { family: "Share Tech Mono", size: 10 }
-    },
-    yaxis: { 
-      range: [-2, 2],
-      color: "#999999",
-      gridcolor: "#333333",
-      zerolinecolor: "#666666",
-      font: { family: "Share Tech Mono", size: 10 }
-    },
-    margin: { t: 40, l: 40, r: 40, b: 40 },
-    paper_bgcolor: "#000000",
-    plot_bgcolor: "#0a0a0a",
-    font: { color: "#999999", family: "Rajdhani" },
-    showlegend: false,
-    height: 180
-  }, { displayModeBar: false });
 }
 
 // ============ INICIAR ============
@@ -802,4 +624,4 @@ if (document.readyState === "loading") {
 }
 
 // Exportar funções globais
-window.handoverSimulation = handoverSimulation;
+window.getSatState = getSatState;
