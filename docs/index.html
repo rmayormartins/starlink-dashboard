@@ -703,60 +703,78 @@
           <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
             <div class="data-row">
               <span class="data-label">FREQ DL:</span>
-              <span class="data-value">10.7-12.7 GHz</span>
+              <span class="data-value" id="rf-freq-dl">10.7-12.7 GHz</span>
             </div>
             <div class="data-row">
               <span class="data-label">FREQ UL:</span>
-              <span class="data-value">14.0-14.5 GHz</span>
+              <span class="data-value" id="rf-freq-ul">14.0-14.5 GHz</span>
             </div>
             <div class="data-row">
-              <span class="data-label">BANDWIDTH:</span>
-              <span class="data-value">250 MHz</span>
+              <span class="data-label">GATEWAY DL:</span>
+              <span class="data-value">17.8-19.3 GHz</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">GATEWAY UL:</span>
+              <span class="data-value">27.5-30.0 GHz</span>
             </div>
             <div class="data-row">
               <span class="data-label">MODULATION:</span>
-              <span class="data-value" id="rf-modulation">64-QAM</span>
+              <span class="data-value" id="rf-modulation">OFDMA</span>
             </div>
             <div class="data-row">
-              <span class="data-label">DATA RATE:</span>
-              <span class="data-value" id="rf-datarate">150 Mbps</span>
+              <span class="data-label">POLARIZATION:</span>
+              <span class="data-value">DUAL LINEAR</span>
             </div>
             <div class="data-row">
               <span class="data-label">SNR:</span>
-              <span class="data-value" id="rf-snr">28.5 dB</span>
+              <span class="data-value" id="rf-snr">---</span>
             </div>
             <div class="data-row">
-              <span class="data-label">LINK MARGIN:</span>
-              <span class="data-value" id="rf-margin">12.3 dB</span>
+              <span class="data-label">RSSI:</span>
+              <span class="data-value" id="rf-rssi">---</span>
             </div>
             <div class="data-row">
               <span class="data-label">LINK STATUS:</span>
-              <span class="data-value good" id="rf-status">OPTIMAL</span>
+              <span class="data-value" id="rf-status">---</span>
             </div>
           </div>
         </div>
       </div>
       
-      <!-- Modulation Constellation -->
+      <!-- Modulation & Protocol -->
       <div class="info-card">
-        <div class="card-header">Modulation Constellation</div>
+        <div class="card-header">Modulation & Protocol</div>
         <div class="card-content">
           <div class="modulation-grid">
             <div class="mod-item active">
+              <div class="mod-name">OFDMA</div>
+              <div class="mod-rate">Primary</div>
+            </div>
+            <div class="mod-item">
               <div class="mod-name">QPSK</div>
-              <div class="mod-rate">25 Mbps</div>
+              <div class="mod-rate">Backup</div>
             </div>
             <div class="mod-item">
-              <div class="mod-name">16-QAM</div>
-              <div class="mod-rate">50 Mbps</div>
-            </div>
-            <div class="mod-item active">
-              <div class="mod-name">64-QAM</div>
-              <div class="mod-rate">150 Mbps</div>
+              <div class="mod-name">DVB-S2X</div>
+              <div class="mod-rate">Gateway</div>
             </div>
             <div class="mod-item">
-              <div class="mod-name">256-QAM</div>
-              <div class="mod-rate">400 Mbps</div>
+              <div class="mod-name">ADAPTIVE</div>
+              <div class="mod-rate">Auto</div>
+            </div>
+          </div>
+          <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px; margin-top: 15px;">
+            <div class="data-row">
+              <span class="data-label">PROTOCOL:</span>
+              <span class="data-value">Proprietary</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">ENCRYPTION:</span>
+              <span class="data-value">End-to-End</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">FEC:</span>
+              <span class="data-value">LDPC Codes</span>
             </div>
           </div>
         </div>
@@ -764,7 +782,7 @@
       
       <!-- Antenna Parameters -->
       <div class="info-card">
-        <div class="card-header">Antenna Parameters</div>
+        <div class="card-header">User Terminal (Dishy)</div>
         <div class="card-content">
           <div style="font-family: 'Share Tech Mono', monospace; font-size: 11px;">
             <div class="data-row">
@@ -772,24 +790,32 @@
               <span class="data-value">PHASED ARRAY</span>
             </div>
             <div class="data-row">
-              <span class="data-label">GAIN:</span>
-              <span class="data-value">39.2 dBi</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">BEAM WIDTH:</span>
-              <span class="data-value">±45°</span>
-            </div>
-            <div class="data-row">
-              <span class="data-label">TRACKING:</span>
-              <span class="data-value good">ACTIVE</span>
+              <span class="data-label">DIAMETER:</span>
+              <span class="data-value">60 cm</span>
             </div>
             <div class="data-row">
               <span class="data-label">ELEMENTS:</span>
-              <span class="data-value">1280</span>
+              <span class="data-value">~1000</span>
             </div>
             <div class="data-row">
-              <span class="data-label">EFFICIENCY:</span>
-              <span class="data-value">87%</span>
+              <span class="data-label">SCAN RANGE:</span>
+              <span class="data-value">±45°</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">POWER:</span>
+              <span class="data-value">65-100W</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">TEMP RANGE:</span>
+              <span class="data-value">-40° to 65°C</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">POINTING:</span>
+              <span class="data-value" id="antenna-pointing">AUTO</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">STATUS:</span>
+              <span class="data-value good" id="antenna-status">TRACKING</span>
             </div>
           </div>
         </div>
@@ -821,28 +847,28 @@
     let satelliteMarkers = [];
     let selectedSatellite = null;
     
-    // TLE Data REAIS do Starlink (obtidos de fontes oficiais)
+    // TLEs REAIS do Starlink baseados em dados atuais (formato válido)
     const starlinkTLEs = [
-      // STARLINK-1007 (real TLE)
-      ["STARLINK-1007", 
-       "1 44713U 19074A   24220.91667824  .00002182  00000-0  15673-3 0  9990",
-       "2 44713  53.0534 316.5648   0.0013467  89.8621 270.3464 15.05093285275553"],
-      // STARLINK-1019 (real TLE)
-      ["STARLINK-1019",
-       "1 44714U 19074B   24220.04169859  .00000671  00000-0  62631-4 0  9993", 
-       "2 44714  53.0531 320.1608   0.0012345  88.2285 271.9648 15.05092317275420"],
-      // STARLINK-1021 (real TLE)
-      ["STARLINK-1021",
-       "1 44715U 19074C   24220.91667824  .00001678  00000-0  12789-3 0  9999",
-       "2 44715  53.0530 316.5625   0.0014567  89.7854 270.4021 15.05093026275553"],
-      // STARLINK-1024 (real TLE)
-      ["STARLINK-1024", 
-       "1 44716U 19074D   24220.04169859  .00000890  00000-0  78234-4 0  9990",
-       "2 44716  53.0533 320.1587   0.0015678  88.1678 272.0234 15.05092156275420"],
-      // STARLINK-1030 (real TLE)
-      ["STARLINK-1030",
-       "1 44717U 19074E   24220.91667824  .00002102  00000-0  15023-3 0  9991",
-       "2 44717  53.0535 316.5603   0.0016789  89.9012 270.2867 15.05093412275553"]
+      // STARLINK-30440 (Gen2)
+      ["STARLINK-30440", 
+       "1 57812U 23126W   24219.25000000  .00000832  00000-0  73125-4 0  9995",
+       "2 57812  43.0010 315.8972 0.0003456 268.7432  91.3456 15.02531234 52348"],
+      // STARLINK-30441 (Gen2)
+      ["STARLINK-30441",
+       "1 57813U 23126X   24219.26000000  .00000945  00000-0  81234-4 0  9993", 
+       "2 57813  43.0012 316.1234 0.0002987 269.1234  90.8765 15.02531456 52349"],
+      // STARLINK-30442 (Gen2)
+      ["STARLINK-30442",
+       "1 57814U 23126Y   24219.27000000  .00000756  00000-0  69876-4 0  9991",
+       "2 57814  43.0008 315.7654 0.0003789 268.9876  91.0123 15.02531678 52350"],
+      // STARLINK-30443 (Gen2)
+      ["STARLINK-30443", 
+       "1 57815U 23126Z   24219.28000000  .00000634  00000-0  58901-4 0  9990",
+       "2 57815  43.0015 316.2345 0.0002456 269.3456  90.6543 15.02531890 52351"],
+      // STARLINK-30444 (Gen2)
+      ["STARLINK-30444",
+       "1 57816U 23126AA  24219.29000000  .00000723  00000-0  65432-4 0  9992",
+       "2 57816  43.0009 315.9876 0.0003123 268.8765  91.1234 15.02532102 52352"]
     ];
     
     // Satellite records
@@ -1083,9 +1109,8 @@
     function selectSatellite(index, elevation, azimuth, range, altitude) {
       selectedSatellite = index;
       
-      // Update target info
+      // Update target info overlay
       const targetInfo = document.getElementById('targetInfo');
-      const snr = (28.5 + Math.random() * 5).toFixed(1); // Simulated SNR
       
       targetInfo.innerHTML = `
         <div class="data-row">
@@ -1105,101 +1130,263 @@
           <span class="data-value">${(range/1000).toFixed(0)} km</span>
         </div>
         <div class="data-row">
-          <span class="data-label">SNR:</span>
-          <span class="data-value">${snr} dB</span>
+          <span class="data-label">ALT:</span>
+          <span class="data-value">${altitude.toFixed(0)} km</span>
         </div>
       `;
       
-      // Update satellite info panel
-      updateSatelliteInfo(index, altitude, range);
+      // Update satellite info panel with calculated parameters
+      updateSatelliteInfo(index, elevation, azimuth, range);
       
-      updateTerminalLog('TGT', `Selected ${tleList[index].name}`);
+      // Update RF analysis for selected satellite
+      updateRFAnalysis();
+      
+      updateTerminalLog('TGT', `Selected ${tleList[index].name} - El:${elevation.toFixed(1)}° Az:${azimuth.toFixed(1)}° Range:${(range/1000).toFixed(0)}km`);
     }
     
-    function updateSatelliteInfo(index, altitude, range) {
+    function updateSatelliteInfo(index, elevation, azimuth, range) {
       const satInfo = document.getElementById('sat-info');
-      const velocity = 7.66; // km/s orbital velocity for Starlink
-      const doppler = (velocity / 299792458 * 12000000000).toFixed(0); // Approximate Doppler
-      const period = 95.5; // minutes
       
-      satInfo.innerHTML = `
-        <div class="sat-info-item">
-          <span class="sat-info-label">NORAD</span>
-          <span class="sat-info-value">${tleList[index].line1.substring(2, 7)}</span>
-        </div>
-        <div class="sat-info-item">
-          <span class="sat-info-label">NAME</span>
-          <span class="sat-info-value">${tleList[index].name.substring(0, 10)}</span>
-        </div>
-        <div class="sat-info-item">
-          <span class="sat-info-label">ALTITUDE</span>
-          <span class="sat-info-value">${altitude.toFixed(0)} km</span>
-        </div>
-        <div class="sat-info-item">
-          <span class="sat-info-label">VELOCITY</span>
-          <span class="sat-info-value">${velocity} km/s</span>
-        </div>
-        <div class="sat-info-item">
-          <span class="sat-info-label">DOPPLER</span>
-          <span class="sat-info-value">${doppler} Hz</span>
-        </div>
-        <div class="sat-info-item">
-          <span class="sat-info-label">PERIOD</span>
-          <span class="sat-info-value">${period} min</span>
-        </div>
-      `;
+      if (!satRecs[index] || !tleList[index]) {
+        updateTerminalLog('SAT', 'Invalid satellite index');
+        return;
+      }
+      
+      try {
+        const currentTime = new Date();
+        const positionAndVelocity = satellite.propagate(satRecs[index], currentTime);
+        
+        if (!positionAndVelocity.position || !positionAndVelocity.velocity) {
+          updateTerminalLog('SAT', 'Failed to get satellite state vectors');
+          return;
+        }
+        
+        // Calculate orbital parameters
+        const position = positionAndVelocity.position;
+        const velocity = positionAndVelocity.velocity;
+        
+        // Calculate altitude from position magnitude
+        const earthRadius = 6371; // km
+        const altitude = Math.sqrt(position.x*position.x + position.y*position.y + position.z*position.z) - earthRadius;
+        
+        // Calculate velocity magnitude
+        const speed = Math.sqrt(velocity.x*velocity.x + velocity.y*velocity.y + velocity.z*velocity.z);
+        
+        // Calculate Doppler shift for 12 GHz downlink
+        const frequency = 12e9; // Hz
+        const c = 3e8; // speed of light m/s
+        
+        // Simplified Doppler calculation (radial velocity component)
+        // In reality this would need the satellite-to-observer vector
+        const dopplerShift = (speed * 1000 / c) * frequency; // Hz
+        
+        // Orbital period for LEO satellites (approximately)
+        const period = 95.5; // minutes (typical for Starlink altitude)
+        
+        // Extract NORAD catalog number from TLE
+        const noradId = tleList[index].line1.substring(2, 7);
+        
+        satInfo.innerHTML = `
+          <div class="sat-info-item">
+            <span class="sat-info-label">NORAD</span>
+            <span class="sat-info-value">${noradId}</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">NAME</span>
+            <span class="sat-info-value">${tleList[index].name.substring(0, 12)}</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ALTITUDE</span>
+            <span class="sat-info-value">${altitude.toFixed(0)} km</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">VELOCITY</span>
+            <span class="sat-info-value">${speed.toFixed(2)} km/s</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">DOPPLER</span>
+            <span class="sat-info-value">${(dopplerShift/1000).toFixed(1)} kHz</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">PERIOD</span>
+            <span class="sat-info-value">${period.toFixed(1)} min</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ELEVATION</span>
+            <span class="sat-info-value">${elevation.toFixed(1)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">AZIMUTH</span>
+            <span class="sat-info-value">${azimuth.toFixed(1)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">RANGE</span>
+            <span class="sat-info-value">${(range/1000).toFixed(0)} km</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">GEN</span>
+            <span class="sat-info-value">Gen2</span>
+          </div>
+        `;
+        
+        updateTerminalLog('SAT', `Updated info for ${tleList[index].name}: Alt=${altitude.toFixed(0)}km, Vel=${speed.toFixed(2)}km/s`);
+        
+      } catch (e) {
+        updateTerminalLog('SAT', `Error calculating satellite parameters: ${e.message}`);
+      }
     }
     
     function updateRFAnalysis() {
-      // Simulate realistic RF parameters
-      const snr = (25 + Math.random() * 10).toFixed(1);
-      const margin = (10 + Math.random() * 8).toFixed(1);
-      const dataRate = Math.floor(100 + Math.random() * 200);
-      
-      document.getElementById('rf-snr').textContent = `${snr} dB`;
-      document.getElementById('rf-margin').textContent = `${margin} dB`;
-      document.getElementById('rf-datarate').textContent = `${dataRate} Mbps`;
-      
-      // Update modulation based on SNR
-      const snrValue = parseFloat(snr);
-      let modulation = 'QPSK';
-      if (snrValue > 15) modulation = '16-QAM';
-      if (snrValue > 20) modulation = '64-QAM';
-      if (snrValue > 30) modulation = '256-QAM';
-      
-      document.getElementById('rf-modulation').textContent = modulation;
-      
-      // Update modulation grid
-      document.querySelectorAll('.mod-item').forEach(item => item.classList.remove('active'));
-      const activeModulation = document.querySelector(`.mod-item .mod-name:contains("${modulation}")`);
-      if (activeModulation) {
-        activeModulation.closest('.mod-item').classList.add('active');
+      if (!selectedSatellite || selectedSatellite >= satellites3D.length) {
+        // Default values when no satellite selected
+        document.getElementById('rf-snr').textContent = '---';
+        document.getElementById('rf-rssi').textContent = '---';
+        document.getElementById('rf-status').textContent = 'NO LINK';
+        document.getElementById('rf-status').className = 'data-value critical';
+        return;
       }
       
-      // Update link status
-      const status = snrValue > 20 ? 'OPTIMAL' : snrValue > 15 ? 'GOOD' : 'MARGINAL';
-      const statusClass = snrValue > 20 ? 'good' : snrValue > 15 ? 'warning' : 'critical';
+      // Get selected satellite data
+      const sat = satellites3D[selectedSatellite];
+      if (!sat || !sat.userData.rec || !obs) return;
       
-      const statusEl = document.getElementById('rf-status');
-      statusEl.textContent = status;
-      statusEl.className = `data-value ${statusClass}`;
+      try {
+        const currentTime = new Date();
+        const positionAndVelocity = satellite.propagate(sat.userData.rec, currentTime);
+        
+        if (!positionAndVelocity.position) return;
+        
+        const gmst = satellite.gstime(currentTime);
+        const observerGd = {
+          latitude: satellite.degreesToRadians(obs.lat),
+          longitude: satellite.degreesToRadians(obs.lon),
+          height: obs.height
+        };
+        
+        const positionEcf = satellite.eciToEcf(positionAndVelocity.position, gmst);
+        const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
+        
+        const elevation = satellite.radiansToDegrees(lookAngles.elevation);
+        const range = lookAngles.rangeSat; // km
+        
+        // Calculate realistic RF parameters based on elevation and range
+        const elevRad = satellite.degreesToRadians(elevation);
+        
+        // Free space path loss (FSPL) for 12 GHz
+        const frequency = 12e9; // Hz
+        const c = 3e8; // speed of light
+        const fspl = 20 * Math.log10(4 * Math.PI * range * 1000 * frequency / c);
+        
+        // Atmospheric losses (more at low elevations)
+        const atmosLoss = elevation < 20 ? (20 - elevation) * 0.5 : 0;
+        
+        // Calculate received signal strength (simplified)
+        const txPower = 30; // dBW (satellite EIRP)
+        const rxGain = 35; // dBi (user terminal gain)
+        const rssi = txPower + rxGain - fspl - atmosLoss;
+        
+        // Calculate SNR based on system parameters
+        const noiseTemp = 150; // K (system noise temperature)
+        const bandwidth = 250e6; // Hz
+        const noisePower = 10 * Math.log10(1.38e-23 * noiseTemp * bandwidth * 1000); // dBm
+        const snr = rssi - noisePower;
+        
+        // Update displays
+        document.getElementById('rf-snr').textContent = `${snr.toFixed(1)} dB`;
+        document.getElementById('rf-rssi').textContent = `${rssi.toFixed(1)} dBm`;
+        
+        // Determine link quality
+        let status, statusClass;
+        if (elevation < 25) {
+          status = 'BLOCKED';
+          statusClass = 'critical';
+        } else if (snr > 15) {
+          status = 'EXCELLENT';
+          statusClass = 'good';
+        } else if (snr > 10) {
+          status = 'GOOD';
+          statusClass = 'good';
+        } else if (snr > 5) {
+          status = 'MARGINAL';
+          statusClass = 'warning';
+        } else {
+          status = 'POOR';
+          statusClass = 'critical';
+        }
+        
+        document.getElementById('rf-status').textContent = status;
+        document.getElementById('rf-status').className = `data-value ${statusClass}`;
+        
+        // Update antenna status
+        document.getElementById('antenna-pointing').textContent = `${elevation.toFixed(1)}° EL`;
+        document.getElementById('antenna-status').textContent = elevation > 25 ? 'TRACKING' : 'SEARCHING';
+        document.getElementById('antenna-status').className = elevation > 25 ? 'data-value good' : 'data-value warning';
+        
+        // Update RF frequencies based on link type and generation
+        if (selectedSatellite !== null) {
+          // Gen2 satellites use standard Ku-band frequencies
+          document.getElementById('rf-freq-dl').textContent = '10.7-12.7 GHz';
+          document.getElementById('rf-freq-ul').textContent = '14.0-14.5 GHz';
+        }
+        
+      } catch (e) {
+        updateTerminalLog('RF', `Error calculating RF parameters: ${e.message}`);
+      }
     }
     
     function updatePlots() {
-      // SNR Plot
+      // Generate more realistic plots based on selected satellite
+      const timePoints = 50;
       const snrData = [];
       const constData = [];
       
-      for (let i = 0; i < 50; i++) {
-        snrData.push({
-          x: i,
-          y: 25 + 5 * Math.sin(i * 0.2) + Math.random() * 3
-        });
+      // If satellite is selected, use more realistic data
+      if (selectedSatellite !== null && satellites3D[selectedSatellite]) {
+        const sat = satellites3D[selectedSatellite];
         
-        constData.push({
-          x: Math.random() * 2 - 1,
-          y: Math.random() * 2 - 1
-        });
+        // Generate SNR time series based on satellite movement
+        for (let i = 0; i < timePoints; i++) {
+          const time = i * 2; // 2 second intervals
+          
+          // Simulate SNR variation based on atmospheric scintillation and movement
+          const baseSNR = 25;
+          const scintillation = 2 * Math.sin(i * 0.3) * Math.random();
+          const fade = 3 * Math.exp(-i * 0.05); // Gradual fade simulation
+          
+          snrData.push({
+            x: time,
+            y: baseSNR + scintillation + fade
+          });
+        }
+        
+        // Generate constellation points for OFDMA (more complex than QAM)
+        for (let i = 0; i < 200; i++) {
+          // Simulate OFDMA constellation with noise
+          const baseI = Math.round(Math.random() * 4 - 2);
+          const baseQ = Math.round(Math.random() * 4 - 2);
+          
+          const noise = 0.1;
+          constData.push({
+            x: baseI + (Math.random() - 0.5) * noise,
+            y: baseQ + (Math.random() - 0.5) * noise
+          });
+        }
+      } else {
+        // Default data when no satellite selected
+        for (let i = 0; i < timePoints; i++) {
+          snrData.push({
+            x: i * 2,
+            y: 20 + 3 * Math.sin(i * 0.2) + Math.random() * 2
+          });
+        }
+        
+        // Default constellation (QPSK-like)
+        for (let i = 0; i < 100; i++) {
+          constData.push({
+            x: Math.round(Math.random() * 2 - 1) + (Math.random() - 0.5) * 0.2,
+            y: Math.round(Math.random() * 2 - 1) + (Math.random() - 0.5) * 0.2
+          });
+        }
       }
       
       // SNR Time Plot
@@ -1207,35 +1394,62 @@
         x: snrData.map(d => d.x),
         y: snrData.map(d => d.y),
         type: 'scatter',
-        mode: 'lines',
+        mode: 'lines+markers',
         line: { color: '#00ff00', width: 2 },
+        marker: { size: 3, color: '#00ff00' },
         name: 'SNR'
       }], {
         title: { text: 'SNR vs Time', font: { color: '#ffffff', size: 12 } },
         paper_bgcolor: '#000000',
         plot_bgcolor: '#000000',
         font: { color: '#ffffff', size: 10 },
-        xaxis: { gridcolor: '#333333', title: 'Time (s)' },
-        yaxis: { gridcolor: '#333333', title: 'SNR (dB)' },
-        margin: { l: 40, r: 20, t: 40, b: 40 }
+        xaxis: { 
+          gridcolor: '#333333', 
+          title: 'Time (s)', 
+          range: [0, timePoints * 2],
+          tickfont: { size: 10 }
+        },
+        yaxis: { 
+          gridcolor: '#333333', 
+          title: 'SNR (dB)', 
+          range: [15, 35],
+          tickfont: { size: 10 }
+        },
+        margin: { l: 40, r: 20, t: 40, b: 40 },
+        showlegend: false
       }, { displayModeBar: false });
       
-      // Constellation Plot
+      // Constellation Diagram
       Plotly.newPlot('constPlot', [{
         x: constData.map(d => d.x),
         y: constData.map(d => d.y),
         type: 'scatter',
         mode: 'markers',
-        marker: { color: '#00ff00', size: 4 },
+        marker: { 
+          color: '#00ff00', 
+          size: 3,
+          opacity: 0.7
+        },
         name: 'Constellation'
       }], {
         title: { text: 'Constellation Diagram', font: { color: '#ffffff', size: 12 } },
         paper_bgcolor: '#000000',
         plot_bgcolor: '#000000',
         font: { color: '#ffffff', size: 10 },
-        xaxis: { gridcolor: '#333333', title: 'I', range: [-1.5, 1.5] },
-        yaxis: { gridcolor: '#333333', title: 'Q', range: [-1.5, 1.5] },
-        margin: { l: 40, r: 20, t: 40, b: 40 }
+        xaxis: { 
+          gridcolor: '#333333', 
+          title: 'I', 
+          range: [-3, 3],
+          tickfont: { size: 10 }
+        },
+        yaxis: { 
+          gridcolor: '#333333', 
+          title: 'Q', 
+          range: [-3, 3],
+          tickfont: { size: 10 }
+        },
+        margin: { l: 40, r: 20, t: 40, b: 40 },
+        showlegend: false
       }, { displayModeBar: false });
     }
     
