@@ -305,7 +305,7 @@
     #globe {
       width: 100%;
       height: 100%;
-      background: radial-gradient(ellipse at center, #0a0a1a 0%, #000000 100%);
+      background: radial-gradient(ellipse at center, #0a0a0a 0%, #000000 100%);
     }
     
     /* Map Overlay */
@@ -494,7 +494,7 @@
     
     /* Highlighted selected satellite */
     .leaflet-interactive.selected-satellite {
-      filter: drop-shadow(0 0 8px #ff00ff) !important;
+      filter: drop-shadow(0 0 8px #ffffff) !important;
       z-index: 1000 !important;
     }
     
@@ -693,7 +693,7 @@
             <span style="color: #999999;">LOW ALT (<500km)</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
+            <div class="legend-color" style="background: #ffffff;"></div>
             <span style="color: #999999;">SELECTED</span>
           </div>
           <div class="legend-item">
@@ -754,16 +754,8 @@
             <span style="color: #999999;">NORMAL (500-550km)</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #00ffff;"></div>
+            <div class="legend-color" style="background: #0000ff;"></div>
             <span style="color: #999999;">LOW (<500km)</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
-            <span style="color: #999999;">SELECTED</span>
-          </div>
-          <div class="legend-item">
-            <div class="legend-color" style="background: #444444;"></div>
-            <span style="color: #999999;">NOT VISIBLE</span>
           </div>
         </div>
       </div>
@@ -926,7 +918,7 @@
     let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
     let selectedSatellite = null;
     let isDrawing = false;
-    let persistentPopup = null; // Para manter popup aberto durante updates
+    let selectedPopup = null; // Para manter o popup aberto
     
     let config = {
       showFootprints: true,
@@ -1073,11 +1065,20 @@
       footprintGroup = L.layerGroup().addTo(map);
       trajectoryGroup = L.layerGroup().addTo(map);
       
-      // Observer location marker - triangular tactical base
+      // Observer location marker - TRIÂNGULO BRANCO TÁTICO
       const observerIcon = L.divIcon({
-        html: '<div style="width: 16px; height: 16px; background: #ff0000; border: 2px solid #ffffff; position: relative; box-shadow: 0 0 10px #ff0000;"><div style="position: absolute; top: 2px; left: 2px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #ffffff;"></div></div>',
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
+        html: `<div style="
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 14px solid #ffffff;
+          filter: drop-shadow(0 0 6px #ffffff);
+          transform: rotate(0deg);
+        "></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 14],
+        className: 'tactical-base-marker'
       });
       
       L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
@@ -1203,7 +1204,7 @@
       updateSatellites();
     }
     
-    // ==================== GLOBO 3D ====================
+    // ==================== GLOBO 3D CORRIGIDO ====================
     
     function init3DGlobe() {
       const container = document.getElementById('globe');
@@ -1212,25 +1213,20 @@
         return;
       }
       
-      updateTerminalLog('3D', '=== INITIALIZING TACTICAL 3D GLOBE ===');
-      updateTerminalLog('3D', `Container size: ${container.clientWidth}x${container.clientHeight}`);
+      updateTerminalLog('3D', 'Initializing tactical 3D display...');
       
       // Clear previous content
       container.innerHTML = '';
       
-      // Scene setup with TACTICAL BLACK background
+      // Scene setup - TÁTICO PRETO
       scene3D = new THREE.Scene();
-      scene3D.background = new THREE.Color(0x000000); // Pure black tactical
-      
-      updateTerminalLog('3D', 'Scene created with tactical black background');
+      scene3D.background = new THREE.Color(0x000000); // Preto tático
       
       // Camera setup
       const aspect = container.clientWidth / container.clientHeight;
-      camera3D = new THREE.PerspectiveCamera(50, aspect, 100, 200000);
-      camera3D.position.set(25000, 18000, 25000);
+      camera3D = new THREE.PerspectiveCamera(50, aspect, 1, 200000);
+      camera3D.position.set(20000, 15000, 20000);
       camera3D.lookAt(0, 0, 0);
-      
-      updateTerminalLog('3D', `Camera positioned at (${camera3D.position.x}, ${camera3D.position.y}, ${camera3D.position.z})`);
       
       // Renderer setup
       renderer3D = new THREE.WebGLRenderer({ 
@@ -1238,73 +1234,74 @@
         alpha: false
       });
       renderer3D.setSize(container.clientWidth, container.clientHeight);
-      renderer3D.setClearColor(0x000000, 1); // Tactical black
+      renderer3D.setClearColor(0x000000, 1); // Fundo preto tático
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       container.appendChild(renderer3D.domElement);
       
-      updateTerminalLog('3D', `Renderer created and added to container`);
+      updateTerminalLog('3D', `Renderer created: ${container.clientWidth}x${container.clientHeight}`);
       
-      // Tactical lighting - minimal ambient light
-      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
+      // Lighting - TÁTICO
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Luz ambiente reduzida
       scene3D.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Luz direcionada reduzida
+      directionalLight.position.set(30000, 20000, 30000);
+      scene3D.add(directionalLight);
       
       updateTerminalLog('3D', 'Tactical lighting configured');
       
       createEarth();
       setupGlobeControls();
       
-      updateTerminalLog('3D', 'Earth and controls initialized, waiting for satellite data...');
+      updateTerminalLog('3D', 'Earth and controls created');
       
-      // Wait for satellite data then create satellites
+      // Wait for satellites then create them
       setTimeout(() => {
         if (satRecs && satRecs.length > 0) {
-          const validCount = satRecs.filter(r => r !== null).length;
-          updateTerminalLog('3D', `Found ${validCount} valid satellites, creating 3D objects...`);
           create3DSatellites();
           globe3D = true;
           animate3D();
-          updateTerminalLog('3D', 'Globe animation started - satellites should be visible!');
+          updateTerminalLog('3D', 'Animation started');
         } else {
-          updateTerminalLog('3D', 'No satellite data available, retrying in 2 seconds...');
+          updateTerminalLog('3D', 'No satellites available, retrying...');
           setTimeout(() => init3DGlobe(), 2000);
         }
-      }, 1000);
+      }, 500);
     }
     
     function createEarth() {
-      updateTerminalLog('3D', 'Creating tactical Earth...');
-      
-      const earthGeometry = new THREE.SphereGeometry(6371, 64, 64);
-      
-      // Tactical black Earth material
-      const earthMaterial = new THREE.MeshBasicMaterial({
-        color: 0x111111,
-        transparent: true,
-        opacity: 0.8
+      // Terra TÁTICA PRETA
+      const earthGeometry = new THREE.SphereGeometry(6371, 128, 64);
+      const earthMaterial = new THREE.MeshPhongMaterial({
+        color: 0x111111, // Cinza escuro tático
+        emissive: 0x000000, // Sem emissão
+        emissiveIntensity: 0,
+        specular: 0x222222, // Reflexo muito sutil
+        shininess: 5,
+        transparent: false,
+        opacity: 1.0
       });
       
       earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
       scene3D.add(earthMesh);
       
-      updateTerminalLog('3D', 'Earth mesh created and added to scene');
-      
-      // Tactical wireframe overlay
-      const wireframeGeometry = new THREE.SphereGeometry(6371, 32, 16);
+      // Wireframe tático verde
+      const wireframeGeometry = new THREE.SphereGeometry(6372, 64, 32);
       const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00ff00,
+        color: 0x004400, // Verde escuro tático
         wireframe: true,
         transparent: true,
-        opacity: 0.3
+        opacity: 0.4
       });
       const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
-      earthMesh.add(wireframeMesh);
+      scene3D.add(wireframeMesh);
       
-      updateTerminalLog('3D', 'Wireframe overlay added');
-      
-      // Observer location marker - bright red tactical marker
-      const markerGeometry = new THREE.ConeGeometry(200, 400, 8);
+      // Observer location - TRIÂNGULO BRANCO TÁTICO
+      const markerGeometry = new THREE.ConeGeometry(200, 400, 3); // Cone triangular
       const markerMaterial = new THREE.MeshBasicMaterial({
-        color: 0xff0000,
-        transparent: false
+        color: 0xffffff, // Branco brilhante
+        emissive: 0xffffff,
+        emissiveIntensity: 0.5
       });
       const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
       
@@ -1316,17 +1313,20 @@
       observerMarker.position.y = radius * Math.sin(lat);
       observerMarker.position.z = radius * Math.cos(lat) * Math.sin(lon);
       
-      // Point the cone towards earth center
-      observerMarker.lookAt(0, 0, 0);
-      observerMarker.rotateX(Math.PI);
+      // Orientar o triângulo para cima
+      observerMarker.lookAt(
+        observerMarker.position.x * 2,
+        observerMarker.position.y * 2,
+        observerMarker.position.z * 2
+      );
       
       scene3D.add(observerMarker);
       
-      updateTerminalLog('3D', `Observer marker positioned at (${observerMarker.position.x.toFixed(0)}, ${observerMarker.position.y.toFixed(0)}, ${observerMarker.position.z.toFixed(0)})`);
+      updateTerminalLog('3D', 'Tactical Earth and base marker created');
     }
     
     function create3DSatellites() {
-      updateTerminalLog('3D', `Starting satellite creation - TLE count: ${tleList.length}, SGP4 count: ${satRecs.length}`);
+      updateTerminalLog('3D', `Creating 3D satellites - TLE count: ${tleList.length}, SGP4 count: ${satRecs.length}`);
       
       const validSats = satRecs.filter(r => r !== null);
       if (validSats.length === 0) {
@@ -1347,8 +1347,8 @@
       });
       satellites3D = [];
       
-      // Create very large, bright satellites
-      const satGeometry = new THREE.SphereGeometry(500, 32, 32); // Even larger
+      // Create bright satellites
+      const satGeometry = new THREE.SphereGeometry(300, 16, 16);
       let createdCount = 0;
       let positionedCount = 0;
       
@@ -1358,14 +1358,14 @@
         if (!satrec) return;
         
         try {
-          // Create very bright, emissive material
+          // Create bright material
           const material = new THREE.MeshBasicMaterial({
             color: 0x00ff00,
             transparent: false
           });
           
-          const satellite = new THREE.Mesh(satGeometry, material);
-          satellite.userData = { 
+          const satelliteMesh = new THREE.Mesh(satGeometry, material);
+          satelliteMesh.userData = { 
             index: index,
             tle: tleList[index],
             rec: satrec
@@ -1379,12 +1379,11 @@
           
           if (result.position && !isNaN(result.position.x)) {
             // Convert ECI to world coordinates
-            const scale = 1.0;
-            const x = result.position.x * scale;
-            const y = result.position.z * scale;
-            const z = -result.position.y * scale;
+            const x = result.position.x;
+            const y = result.position.z;
+            const z = -result.position.y;
             
-            satellite.position.set(x, y, z);
+            satelliteMesh.position.set(x, y, z);
             
             // Calculate altitude for color
             const radius = Math.sqrt(
@@ -1397,28 +1396,24 @@
             // Color by altitude with bright colors
             let color;
             if (altitude > 600) {
-              color = 0xff0000; // Bright Red
+              color = 0xff0000; // Red
             } else if (altitude > 550) {
-              color = 0xffff00; // Bright Yellow
+              color = 0xffff00; // Yellow
             } else if (altitude > 500) {
-              color = 0x00ff00; // Bright Green
+              color = 0x00ff00; // Green
             } else {
-              color = 0x0000ff; // Bright Blue
+              color = 0x0000ff; // Blue
             }
             
             material.color.setHex(color);
             
-            scene3D.add(satellite);
-            satellites3D.push(satellite);
+            scene3D.add(satelliteMesh);
+            satellites3D.push(satelliteMesh);
             positionedCount++;
             
-            if (index < 5) { // Log first 5 for debugging
-              updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} at (${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}) alt:${altitude.toFixed(0)}km color:${color.toString(16)}`);
-            }
-            
           } else {
-            // Fallback positioning with guaranteed visibility
-            const alt = 550 + (index % 10) * 30; // Vary altitude
+            // Fallback positioning
+            const alt = 550 + (index % 10) * 30;
             const radius = 6371 + alt;
             const angle = (index / Math.max(tleList.length, 1)) * 2 * Math.PI;
             const inclination = (43 + (index % 15)) * Math.PI / 180;
@@ -1427,19 +1422,14 @@
             const y = radius * Math.sin(inclination);
             const z = radius * Math.sin(angle) * Math.cos(inclination);
             
-            satellite.position.set(x, y, z);
+            satelliteMesh.position.set(x, y, z);
             
-            // Color by altitude
             let color = alt > 600 ? 0xff0000 : alt > 550 ? 0xffff00 : 0x00ff00;
             material.color.setHex(color);
             
-            scene3D.add(satellite);
-            satellites3D.push(satellite);
+            scene3D.add(satelliteMesh);
+            satellites3D.push(satelliteMesh);
             positionedCount++;
-            
-            if (index < 5) { // Log first 5 fallback positions
-              updateTerminalLog('3D', `Sat ${index}: ${tleList[index].name} FALLBACK at (${x.toFixed(0)}, ${y.toFixed(0)}, ${z.toFixed(0)}) alt:${alt}km`);
-            }
           }
           
         } catch (e) {
@@ -1450,14 +1440,13 @@
       const globeSatsEl = document.getElementById('globe-sats');
       if (globeSatsEl) globeSatsEl.textContent = positionedCount;
       
-      updateTerminalLog('3D', `CREATION COMPLETE: ${createdCount} created, ${positionedCount} positioned, ${satellites3D.length} in array`);
+      updateTerminalLog('3D', `CREATION COMPLETE: ${createdCount} created, ${positionedCount} positioned`);
       updateTerminalLog('3D', `Scene children count: ${scene3D.children.length}`);
-      updateTerminalLog('3D', `Camera position: ${camera3D.position.x.toFixed(0)}, ${camera3D.position.y.toFixed(0)}, ${camera3D.position.z.toFixed(0)}`);
       
-      // Force render once to see if anything appears
+      // Force render
       if (renderer3D && scene3D && camera3D) {
         renderer3D.render(scene3D, camera3D);
-        updateTerminalLog('3D', 'Force render completed');
+        updateTerminalLog('3D', 'Initial render completed');
       }
     }
     
@@ -1467,7 +1456,7 @@
       const currentTime = new Date();
       let updated = 0;
       
-      satellites3D.forEach((sat, satIndex) => {
+      satellites3D.forEach((sat) => {
         const rec = sat.userData.rec;
         if (!rec) return;
         
@@ -1479,16 +1468,19 @@
           if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z)) return;
           
           // Update position
-          const scale = 1.0;
-          sat.position.set(pos.x * scale, pos.z * scale, -pos.y * scale);
+          sat.position.set(pos.x, pos.z, -pos.y);
           
           // Calculate altitude for color coding
           const radius = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
           const altitude = radius - 6371;
           
-          // Color by altitude
+          // Color by altitude or selection
           let color;
-          if (altitude > 600) {
+          const isSelected = selectedSatellite && selectedSatellite.index === sat.userData.index;
+          
+          if (isSelected) {
+            color = 0xffffff; // BRANCO para selecionado
+          } else if (altitude > 600) {
             color = 0xff0000; // Red for high altitude
           } else if (altitude > 550) {
             color = 0xffff00; // Yellow for medium altitude
@@ -1498,31 +1490,8 @@
             color = 0x0000ff; // Blue for low altitude
           }
           
-          // Update colors based on selection and visibility
-          if (obs && sat.material) {
-            const gmst = satellite.gstime(currentTime);
-            const observerGd = {
-              latitude: satellite.degreesToRadians(obs.lat),
-              longitude: satellite.degreesToRadians(obs.lon),
-              height: obs.height || 0
-            };
-            
-            const positionEcf = satellite.eciToEcf(pos, gmst);
-            const lookAngles = satellite.ecfToLookAngles(observerGd, positionEcf);
-            const elevation = satellite.radiansToDegrees(lookAngles.elevation);
-            
-            const isVisible = elevation >= (obs.elevMin || 25);
-            const isSelected = selectedSatellite && selectedSatellite.index === sat.userData.index;
-            
-            if (sat.material.color && sat.material.color.setHex) {
-              if (isSelected) {
-                sat.material.color.setHex(0xffffff); // White for selected
-              } else if (isVisible) {
-                sat.material.color.setHex(color);
-              } else {
-                sat.material.color.setHex(0x444444);
-              }
-            }
+          if (sat.material && sat.material.color && sat.material.color.setHex) {
+            sat.material.color.setHex(color);
           }
           
           updated++;
@@ -1535,20 +1504,22 @@
     
     function setupGlobeControls() {
       const container = document.getElementById('globe');
-      if (!container) return;
+      if (!container || !renderer3D) return;
       
       let mouseDown = false;
       let mouseX = 0;
       let mouseY = 0;
       
-      container.addEventListener('mousedown', (e) => {
+      const canvas = renderer3D.domElement;
+      
+      canvas.addEventListener('mousedown', (e) => {
         mouseDown = true;
         mouseX = e.clientX;
         mouseY = e.clientY;
         e.preventDefault();
       });
       
-      container.addEventListener('mousemove', (e) => {
+      canvas.addEventListener('mousemove', (e) => {
         if (!mouseDown || !camera3D) return;
         
         const deltaX = e.clientX - mouseX;
@@ -1566,25 +1537,26 @@
         mouseY = e.clientY;
       });
       
-      container.addEventListener('mouseup', () => {
+      canvas.addEventListener('mouseup', () => {
         mouseDown = false;
       });
       
-      container.addEventListener('wheel', (e) => {
+      canvas.addEventListener('wheel', (e) => {
         if (!camera3D) return;
         const scale = e.deltaY > 0 ? 1.1 : 0.9;
         camera3D.position.multiplyScalar(scale);
         camera3D.position.clampLength(8000, 80000);
         e.preventDefault();
       });
+      
+      updateTerminalLog('3D', 'Globe controls configured');
     }
     
     let lastTime = 0;
     let frameCount = 0;
-    let debugCount = 0;
     
     function animate3D() {
-      if (currentView !== 'globe' || !globe3D) {
+      if (currentView !== 'globe' || !globe3D || !renderer3D) {
         if (animationId) {
           cancelAnimationFrame(animationId);
           animationId = null;
@@ -1593,17 +1565,6 @@
       }
       
       animationId = requestAnimationFrame(animate3D);
-      
-      // Debug logging every 120 frames (every 2 seconds at 60fps)
-      debugCount++;
-      if (debugCount === 120) {
-        updateTerminalLog('3D', `Animation: ${satellites3D.length} sats, Scene: ${scene3D.children.length} objects`);
-        if (satellites3D.length > 0) {
-          const firstSat = satellites3D[0];
-          updateTerminalLog('3D', `First sat pos: (${firstSat.position.x.toFixed(0)}, ${firstSat.position.y.toFixed(0)}, ${firstSat.position.z.toFixed(0)})`);
-        }
-        debugCount = 0;
-      }
       
       // FPS counter
       frameCount++;
@@ -1743,22 +1704,13 @@
       return { rxPower, FSPL };
     }
     
-    // ==================== ATUALIZAÇÃO DE SATÉLITES ====================
+    // ==================== ATUALIZAÇÃO DE SATÉLITES CORRIGIDA ====================
     
     function updateSatellites() {
       if (isDrawing) return;
       isDrawing = true;
       
       const startTime = performance.now();
-      
-      // Save popup state before clearing
-      let popupToRestore = null;
-      if (map.isPopupOpen() && selectedSatellite) {
-        popupToRestore = {
-          index: selectedSatellite.index,
-          content: map.getPopup().getContent()
-        };
-      }
       
       layerGroup.clearLayers();
       footprintGroup.clearLayers();
@@ -1767,6 +1719,7 @@
       let visible = 0;
       let drawn = 0;
       let filtered = 0;
+      let selectedMarker = null; // Para manter referência do marker selecionado
       const MAX_DRAW = 1000;
       const step = Math.ceil(tleList.length / MAX_DRAW);
       
@@ -1792,7 +1745,7 @@
         let color, radius, opacity;
         
         if (isSelected) {
-          color = '#ffffff'; // White: selected
+          color = '#ffffff'; // BRANCO para selecionado
           radius = 6;
           opacity = 1.0;
         } else if (isVisible) {
@@ -1829,7 +1782,8 @@
         const linkBudget = calculateLinkBudget(st.el);
         const orbitType = getOrbitType(st.alt);
         
-        marker.bindPopup(`
+        // Create popup content
+        const popupContent = `
           <div class="terminal-popup">
 <strong>[${t.name || "SAT"}]</strong>
 NORAD: ${t.noradId}
@@ -1841,9 +1795,11 @@ RANGE: ${(st.range/1000).toFixed(0)} km
 SPEED: ${st.speed.toFixed(2)} km/s
 FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
-        `, {
+        `;
+        
+        marker.bindPopup(popupContent, {
           autoClose: false,
-          closeOnEscapeKey: true,
+          closeOnEscapeKey: false, // Não fechar com ESC para manter persistente
           keepInView: true,
           autoPan: false
         });
@@ -1856,16 +1812,19 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           const clickedIndex = e.target.satelliteIndex;
           const clickedData = e.target.satelliteData;
           
-          // Prevent default popup behavior
-          e.target.closePopup();
-          
           selectSatellite(clickedIndex, clickedData.t, clickedData.rec, clickedData.st);
           
-          // Open popup after selection
+          // Manter popup aberto e armazenar referência
+          selectedPopup = e.target;
           e.target.openPopup();
           
-          updateTerminalLog('CLICK', `Clicked satellite ${clickedIndex}: ${clickedData.t.name} (${getOrbitType(clickedData.st.alt)})`);
+          updateTerminalLog('CLICK', `Selected satellite ${clickedIndex}: ${clickedData.t.name} (${getOrbitType(clickedData.st.alt)})`);
         });
+        
+        // Se este é o satélite selecionado, armazena para manter popup
+        if (isSelected) {
+          selectedMarker = marker;
+        }
         
         marker.addTo(layerGroup);
         drawn++;
@@ -1878,7 +1837,7 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
             const trajectoryPoints = calculateTrajectory(rec, 15, 12);
             
             if (trajectoryPoints.length > 1) {
-              const trajectoryColor = isSelected ? '#ffffff' : color;
+              const trajectoryColor = isSelected ? '#ffffff' : color; // Branco para trajetória selecionada
               
               L.polyline(trajectoryPoints, {
                 color: trajectoryColor,
@@ -1900,7 +1859,7 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
             const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
             L.circle([st.lat, st.lon], {
               radius: footprintRadius * 1000,
-              color: isSelected ? '#ffffff' : '#00ff00',
+              color: isSelected ? '#ffffff' : '#00ff00', // Branco para footprint selecionado
               weight: 2,
               opacity: 0.6,
               fillColor: isSelected ? '#ffffff' : '#00ff00',
@@ -1910,6 +1869,16 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
             }).addTo(footprintGroup);
           }
         }
+      }
+      
+      // MANTER POPUP ABERTO para satélite selecionado
+      if (selectedMarker && selectedSatellite) {
+        // Atualizar posição do popup e reabrir se necessário
+        setTimeout(() => {
+          if (selectedMarker && !selectedMarker.isPopupOpen()) {
+            selectedMarker.openPopup();
+          }
+        }, 100);
       }
       
       const elapsed = performance.now() - startTime;
@@ -1931,16 +1900,6 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       `;
       
       updateStats(visible, drawn, satRecs.filter(r => r !== null).length);
-      
-      // Restore popup if it was open
-      if (popupToRestore) {
-        layerGroup.eachLayer((layer) => {
-          if (layer.satelliteIndex === popupToRestore.index) {
-            layer.openPopup();
-          }
-        });
-      }
-      
       isDrawing = false;
     }
     
@@ -1989,11 +1948,6 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       updateOrbitalInfo(t, rec);
       
       updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}] - ${orbitType} orbit`);
-      
-      // Refresh map to update colors and trajectories 
-      setTimeout(() => {
-        updateSatellites();
-      }, 50);
     }
     
     function updateSatelliteInfo(index, st, linkBudget) {
