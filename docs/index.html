@@ -563,6 +563,14 @@
               <input type="checkbox" id="footprintSelectedOnly">
               <label for="footprintSelectedOnly">Selected Only</label>
             </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="showTrajectory">
+              <label for="showTrajectory">Show Trajectory</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="trajectorySelectedOnly">
+              <label for="trajectorySelectedOnly">Selected Only</label>
+            </div>
             <button class="btn" id="btnApply">EXECUTE</button>
             <button class="btn" id="btnPause">PAUSE ORBITS</button>
           </div>
@@ -689,11 +697,12 @@
             <span style="color: #999999;">SELECTED</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #333333;"></div>
+            <div class="legend-color" style="background: #006600;"></div>
             <span style="color: #999999;">NOT VISIBLE</span>
           </div>
           <div style="margin-top: 8px; font-size: 9px; color: #666666;">
-            LEO: <2000km | MEO: 2000-35786km | HEO: >35786km
+            LEO: <2000km | MEO: 2000-35786km | HEO: >35786km<br>
+            ─── Trajectory | ┅┅┅ Future Path
           </div>
         </div>
       </div>
@@ -905,7 +914,7 @@
     
     let tleList = [];
     let satRecs = [];
-    let map, layerGroup, footprintGroup;
+    let map, layerGroup, footprintGroup, trajectoryGroup;
     let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
     let selectedSatellite = null;
     let isDrawing = false;
@@ -913,6 +922,8 @@
     let config = {
       showFootprints: true,
       footprintSelectedOnly: false,
+      showTrajectory: false,
+      trajectorySelectedOnly: false,
       maxFootprints: 5,
       filters: {
         LEO: true,
@@ -1051,6 +1062,7 @@
       // Layer groups
       layerGroup = L.layerGroup().addTo(map);
       footprintGroup = L.layerGroup().addTo(map);
+      trajectoryGroup = L.layerGroup().addTo(map);
       
       // Observer location marker
       const observerIcon = L.divIcon({
@@ -1061,16 +1073,6 @@
       
       L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
         .bindPopup('<strong>TACTICAL BASE</strong><br>Campinas, SC<br>Status: OPERATIONAL');
-      
-      // Add click listener to map to close popups when clicking on empty area
-      map.on('click', (e) => {
-        // Check if click was on a marker
-        if (!e.originalEvent.target.closest('.leaflet-marker-icon') && 
-            !e.originalEvent.target.closest('.leaflet-popup')) {
-          map.closePopup();
-          updateTerminalLog("MAP", "Popup closed - clicked on empty area");
-        }
-      });
       
       updateTerminalLog("MAP", "Tactical map system online");
     }
@@ -1107,6 +1109,18 @@
       document.getElementById("footprintSelectedOnly").addEventListener('change', (e) => {
         config.footprintSelectedOnly = e.target.checked;
         updateTerminalLog("CONFIG", `Footprint selected only ${config.footprintSelectedOnly ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("showTrajectory").addEventListener('change', (e) => {
+        config.showTrajectory = e.target.checked;
+        updateTerminalLog("CONFIG", `Trajectory ${config.showTrajectory ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("trajectorySelectedOnly").addEventListener('change', (e) => {
+        config.trajectorySelectedOnly = e.target.checked;
+        updateTerminalLog("CONFIG", `Trajectory selected only ${config.trajectorySelectedOnly ? 'enabled' : 'disabled'}`);
         updateSatellites();
       });
       
@@ -1612,20 +1626,37 @@
       }
     }
     
+    function calculateTrajectory(rec, steps = 20, timeStepMinutes = 10) {
+      const trajectoryPoints = [];
+      const currentTime = new Date();
+      
+      for (let i = 0; i <= steps; i++) {
+        const futureTime = new Date(currentTime.getTime() + i * timeStepMinutes * 60000);
+        const st = getSatState(rec, futureTime);
+        
+        if (st) {
+          trajectoryPoints.push([st.lat, st.lon]);
+        }
+      }
+      
+      return trajectoryPoints;
+    }
+    
     function shouldShowSatellite(st, isVisible) {
       const orbitType = getOrbitType(st.alt);
       
+      // Se "All Possible" não estiver marcado, não mostra nada
+      if (!config.filters.all) {
+        return false;
+      }
+      
+      // Se é visível mas o filtro "visible" está desmarcado, não mostra
+      if (isVisible && !config.filters.visible) {
+        return false;
+      }
+      
       // Check orbit type filters
       if (!config.filters[orbitType]) {
-        return false;
-      }
-      
-      // Check visibility filters
-      if (!config.filters.visible && isVisible) {
-        return false;
-      }
-      
-      if (!config.filters.all) {
         return false;
       }
       
@@ -1698,6 +1729,7 @@
       
       layerGroup.clearLayers();
       footprintGroup.clearLayers();
+      trajectoryGroup.clearLayers();
       
       let visible = 0;
       let drawn = 0;
@@ -1717,13 +1749,13 @@
         const isVisible = st.el >= obs.elevMin;
         const isSelected = selectedSatellite && selectedSatellite.index === i;
         
-        // Apply filters
+        // Apply filters (but always show selected satellite)
         if (!shouldShowSatellite(st, isVisible) && !isSelected) {
           filtered++;
           continue;
         }
         
-        // Color by altitude (same logic as 3D)
+        // Color by altitude with better visibility for "all possible"
         let color, radius, opacity;
         
         if (isSelected) {
@@ -1745,9 +1777,10 @@
           opacity = 0.8;
           visible++;
         } else {
-          color = '#004400'; // Dark green: not visible
+          // Not visible satellites - darker green when "all possible" is on
+          color = config.filters.all ? '#006600' : '#004400'; // Darker green for better visibility
           radius = 2;
-          opacity = 0.3;
+          opacity = config.filters.all ? 0.6 : 0.3; // More opaque when showing all
         }
         
         const marker = L.circleMarker([st.lat, st.lon], {
@@ -1777,9 +1810,9 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
         `, {
           autoClose: false,
-          closeOnEscapeKey: false,
+          closeOnEscapeKey: true,
           keepInView: true,
-          autoPan: true
+          autoPan: false
         });
         
         // Store the actual index in the marker for correct selection
@@ -1790,18 +1823,40 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           const clickedIndex = e.target.satelliteIndex;
           const clickedData = e.target.satelliteData;
           
+          // Prevent default popup behavior
+          e.target.closePopup();
+          
           selectSatellite(clickedIndex, clickedData.t, clickedData.rec, clickedData.st);
           
-          // Force popup to stay open
-          setTimeout(() => {
-            e.target.openPopup();
-          }, 50);
+          // Open popup after selection
+          e.target.openPopup();
           
           updateTerminalLog('CLICK', `Clicked satellite ${clickedIndex}: ${clickedData.t.name} (${getOrbitType(clickedData.st.alt)})`);
         });
         
         marker.addTo(layerGroup);
         drawn++;
+        
+        // Trajectories
+        if (config.showTrajectory) {
+          const shouldShowTraj = config.trajectorySelectedOnly ? isSelected : true;
+          
+          if (shouldShowTraj) {
+            const trajectoryPoints = calculateTrajectory(rec, 15, 12);
+            
+            if (trajectoryPoints.length > 1) {
+              const trajectoryColor = isSelected ? '#ff00ff' : color;
+              
+              L.polyline(trajectoryPoints, {
+                color: trajectoryColor,
+                weight: isSelected ? 3 : 2,
+                opacity: isSelected ? 0.8 : 0.5,
+                dashArray: isSelected ? '5,0' : '10,5',
+                interactive: false
+              }).addTo(trajectoryGroup);
+            }
+          }
+        }
         
         // Footprints
         if (config.showFootprints && isVisible) {
@@ -1892,8 +1947,20 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       
       updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}] - ${orbitType} orbit`);
       
-      // Refresh map to update colors (but don't close popup)
-      setTimeout(() => updateSatellites(), 100);
+      // Refresh map to update colors and trajectories without closing popup
+      setTimeout(() => {
+        const currentPopupOpen = map.isPopupOpen();
+        updateSatellites();
+        // If popup was open, keep it open
+        if (currentPopupOpen) {
+          // Find the marker with this index and reopen its popup
+          layerGroup.eachLayer((layer) => {
+            if (layer.satelliteIndex === index) {
+              layer.openPopup();
+            }
+          });
+        }
+      }, 50);
     }
     
     function updateSatelliteInfo(index, st, linkBudget) {
