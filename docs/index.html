@@ -492,6 +492,12 @@
       color: #ffffff;
     }
     
+    /* Highlighted selected satellite */
+    .leaflet-interactive.selected-satellite {
+      filter: drop-shadow(0 0 8px #ff00ff) !important;
+      z-index: 1000 !important;
+    }
+    
     /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
     ::-webkit-scrollbar-track { background: #000000; }
@@ -559,6 +565,32 @@
             </div>
             <button class="btn" id="btnApply">EXECUTE</button>
             <button class="btn" id="btnPause">PAUSE ORBITS</button>
+          </div>
+        </div>
+        
+        <div class="panel-section">
+          <div class="section-title">Orbit Filters</div>
+          <div class="section-content">
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterLEO" checked>
+              <label for="filterLEO">LEO (<2000km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterMEO" checked>
+              <label for="filterMEO">MEO (2000-35786km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterHEO" checked>
+              <label for="filterHEO">HEO (>35786km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterVisible" checked>
+              <label for="filterVisible">All Visible</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterAll" checked>
+              <label for="filterAll">All Possible</label>
+            </div>
           </div>
         </div>
         
@@ -659,6 +691,9 @@
           <div class="legend-item">
             <div class="legend-color" style="background: #333333;"></div>
             <span style="color: #999999;">NOT VISIBLE</span>
+          </div>
+          <div style="margin-top: 8px; font-size: 9px; color: #666666;">
+            LEO: <2000km | MEO: 2000-35786km | HEO: >35786km
           </div>
         </div>
       </div>
@@ -878,7 +913,14 @@
     let config = {
       showFootprints: true,
       footprintSelectedOnly: false,
-      maxFootprints: 5
+      maxFootprints: 5,
+      filters: {
+        LEO: true,
+        MEO: true,
+        HEO: true,
+        visible: true,
+        all: true
+      }
     };
     
     // ==================== INICIALIZAÇÃO ====================
@@ -1020,6 +1062,16 @@
       L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
         .bindPopup('<strong>TACTICAL BASE</strong><br>Campinas, SC<br>Status: OPERATIONAL');
       
+      // Add click listener to map to close popups when clicking on empty area
+      map.on('click', (e) => {
+        // Check if click was on a marker
+        if (!e.originalEvent.target.closest('.leaflet-marker-icon') && 
+            !e.originalEvent.target.closest('.leaflet-popup')) {
+          map.closePopup();
+          updateTerminalLog("MAP", "Popup closed - clicked on empty area");
+        }
+      });
+      
       updateTerminalLog("MAP", "Tactical map system online");
     }
     
@@ -1055,6 +1107,37 @@
       document.getElementById("footprintSelectedOnly").addEventListener('change', (e) => {
         config.footprintSelectedOnly = e.target.checked;
         updateTerminalLog("CONFIG", `Footprint selected only ${config.footprintSelectedOnly ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      // Orbit filter controls
+      document.getElementById("filterLEO").addEventListener('change', (e) => {
+        config.filters.LEO = e.target.checked;
+        updateTerminalLog("FILTER", `LEO filter ${config.filters.LEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterMEO").addEventListener('change', (e) => {
+        config.filters.MEO = e.target.checked;
+        updateTerminalLog("FILTER", `MEO filter ${config.filters.MEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterHEO").addEventListener('change', (e) => {
+        config.filters.HEO = e.target.checked;
+        updateTerminalLog("FILTER", `HEO filter ${config.filters.HEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterVisible").addEventListener('change', (e) => {
+        config.filters.visible = e.target.checked;
+        updateTerminalLog("FILTER", `Visible filter ${config.filters.visible ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterAll").addEventListener('change', (e) => {
+        config.filters.all = e.target.checked;
+        updateTerminalLog("FILTER", `All filter ${config.filters.all ? 'enabled' : 'disabled'}`);
         updateSatellites();
       });
     }
@@ -1519,6 +1602,36 @@
     
     // ==================== CÁLCULOS DE SATÉLITE ====================
     
+    function getOrbitType(altitude) {
+      if (altitude < 2000) {
+        return 'LEO';
+      } else if (altitude < 35786) {
+        return 'MEO';
+      } else {
+        return 'HEO';
+      }
+    }
+    
+    function shouldShowSatellite(st, isVisible) {
+      const orbitType = getOrbitType(st.alt);
+      
+      // Check orbit type filters
+      if (!config.filters[orbitType]) {
+        return false;
+      }
+      
+      // Check visibility filters
+      if (!config.filters.visible && isVisible) {
+        return false;
+      }
+      
+      if (!config.filters.all) {
+        return false;
+      }
+      
+      return true;
+    }
+    
     function getSatState(rec, time = new Date()) {
       try {
         if (!rec) return null;
@@ -1588,6 +1701,7 @@
       
       let visible = 0;
       let drawn = 0;
+      let filtered = 0;
       const MAX_DRAW = 1000;
       const step = Math.ceil(tleList.length / MAX_DRAW);
       
@@ -1603,13 +1717,19 @@
         const isVisible = st.el >= obs.elevMin;
         const isSelected = selectedSatellite && selectedSatellite.index === i;
         
+        // Apply filters
+        if (!shouldShowSatellite(st, isVisible) && !isSelected) {
+          filtered++;
+          continue;
+        }
+        
         // Color by altitude (same logic as 3D)
         let color, radius, opacity;
         
         if (isSelected) {
           color = '#ff00ff'; // Magenta: selected
-          radius = 5;
-          opacity = 0.9;
+          radius = 6;
+          opacity = 1.0;
         } else if (isVisible) {
           // Color by altitude for visible satellites
           if (st.alt > 600) {
@@ -1632,19 +1752,22 @@
         
         const marker = L.circleMarker([st.lat, st.lon], {
           radius: radius,
-          weight: 1,
+          weight: isSelected ? 3 : 1,
           color: color,
           fillColor: color,
           fillOpacity: opacity,
-          opacity: opacity + 0.2
+          opacity: opacity + 0.2,
+          className: isSelected ? 'selected-satellite' : ''
         });
         
         const linkBudget = calculateLinkBudget(st.el);
+        const orbitType = getOrbitType(st.alt);
         
         marker.bindPopup(`
           <div class="terminal-popup">
 <strong>[${t.name || "SAT"}]</strong>
 NORAD: ${t.noradId}
+ORBIT: ${orbitType}
 ALT..: ${st.alt.toFixed(0)} km
 ELEV.: ${st.el.toFixed(1)}°
 AZIM.: ${st.az.toFixed(1)}°
@@ -1654,13 +1777,29 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           </div>
         `, {
           autoClose: false,
-          closeOnEscapeKey: false
+          closeOnEscapeKey: false,
+          keepInView: true,
+          autoPan: true
         });
         
-        marker.on('click', () => {
-          selectSatellite(i, t, rec, st);
-          marker.openPopup(); // Forçar abertura do popup
+        // Store the actual index in the marker for correct selection
+        marker.satelliteIndex = i;
+        marker.satelliteData = { t, rec, st };
+        
+        marker.on('click', (e) => {
+          const clickedIndex = e.target.satelliteIndex;
+          const clickedData = e.target.satelliteData;
+          
+          selectSatellite(clickedIndex, clickedData.t, clickedData.rec, clickedData.st);
+          
+          // Force popup to stay open
+          setTimeout(() => {
+            e.target.openPopup();
+          }, 50);
+          
+          updateTerminalLog('CLICK', `Clicked satellite ${clickedIndex}: ${clickedData.t.name} (${getOrbitType(clickedData.st.alt)})`);
         });
+        
         marker.addTo(layerGroup);
         drawn++;
         
@@ -1698,8 +1837,8 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
           <span class="data-value">${elapsed.toFixed(0)} ms</span>
         </div>
         <div class="data-row">
-          <span class="data-label">LINK:</span>
-          <span class="data-value good">ACTIVE</span>
+          <span class="data-label">FILTERED:</span>
+          <span class="data-value">${filtered}</span>
         </div>
       `;
       
@@ -1719,6 +1858,7 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       selectedSatellite = { index, tle: t, rec, state: st };
       
       const linkBudget = calculateLinkBudget(st.el);
+      const orbitType = getOrbitType(st.alt);
       
       // Update target overlay
       const targetInfo = document.getElementById('targetInfo');
@@ -1726,6 +1866,10 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
         <div class="data-row">
           <span class="data-label">SAT ID:</span>
           <span class="data-value">${t.name}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">ORBIT:</span>
+          <span class="data-value">${orbitType}</span>
         </div>
         <div class="data-row">
           <span class="data-label">ELEV:</span>
@@ -1746,9 +1890,9 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       updateRFAnalysis(st, linkBudget);
       updateOrbitalInfo(t, rec);
       
-      updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}]`);
+      updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}] - ${orbitType} orbit`);
       
-      // Refresh map to update colors
+      // Refresh map to update colors (but don't close popup)
       setTimeout(() => updateSatellites(), 100);
     }
     
