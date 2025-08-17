@@ -693,7 +693,7 @@
             <span style="color: #999999;">LOW ALT (<500km)</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #ff00ff;"></div>
+            <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
             <span style="color: #999999;">SELECTED</span>
           </div>
           <div class="legend-item">
@@ -754,8 +754,16 @@
             <span style="color: #999999;">NORMAL (500-550km)</span>
           </div>
           <div class="legend-item">
-            <div class="legend-color" style="background: #0000ff;"></div>
+            <div class="legend-color" style="background: #00ffff;"></div>
             <span style="color: #999999;">LOW (<500km)</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #ffffff; border-color: #ffffff;"></div>
+            <span style="color: #999999;">SELECTED</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-color" style="background: #444444;"></div>
+            <span style="color: #999999;">NOT VISIBLE</span>
           </div>
         </div>
       </div>
@@ -918,6 +926,7 @@
     let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
     let selectedSatellite = null;
     let isDrawing = false;
+    let persistentPopup = null; // Para manter popup aberto durante updates
     
     let config = {
       showFootprints: true,
@@ -1064,11 +1073,11 @@
       footprintGroup = L.layerGroup().addTo(map);
       trajectoryGroup = L.layerGroup().addTo(map);
       
-      // Observer location marker
+      // Observer location marker - triangular tactical base
       const observerIcon = L.divIcon({
-        html: '<div style="width: 12px; height: 12px; background: #ff0000; border: 2px solid #ffffff; border-radius: 50%; box-shadow: 0 0 10px #ff0000;"></div>',
-        iconSize: [16, 16],
-        iconAnchor: [8, 8]
+        html: '<div style="width: 16px; height: 16px; background: #ff0000; border: 2px solid #ffffff; position: relative; box-shadow: 0 0 10px #ff0000;"><div style="position: absolute; top: 2px; left: 2px; width: 0; height: 0; border-left: 6px solid transparent; border-right: 6px solid transparent; border-bottom: 10px solid #ffffff;"></div></div>',
+        iconSize: [20, 20],
+        iconAnchor: [10, 10]
       });
       
       L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
@@ -1203,20 +1212,25 @@
         return;
       }
       
-      updateTerminalLog('3D', 'Initializing tactical 3D display...');
+      updateTerminalLog('3D', '=== INITIALIZING TACTICAL 3D GLOBE ===');
+      updateTerminalLog('3D', `Container size: ${container.clientWidth}x${container.clientHeight}`);
       
       // Clear previous content
       container.innerHTML = '';
       
-      // Scene setup
+      // Scene setup with TACTICAL BLACK background
       scene3D = new THREE.Scene();
-      scene3D.background = new THREE.Color(0x000011);
+      scene3D.background = new THREE.Color(0x000000); // Pure black tactical
+      
+      updateTerminalLog('3D', 'Scene created with tactical black background');
       
       // Camera setup
       const aspect = container.clientWidth / container.clientHeight;
       camera3D = new THREE.PerspectiveCamera(50, aspect, 100, 200000);
-      camera3D.position.set(20000, 15000, 20000);
+      camera3D.position.set(25000, 18000, 25000);
       camera3D.lookAt(0, 0, 0);
+      
+      updateTerminalLog('3D', `Camera positioned at (${camera3D.position.x}, ${camera3D.position.y}, ${camera3D.position.z})`);
       
       // Renderer setup
       renderer3D = new THREE.WebGLRenderer({ 
@@ -1224,59 +1238,59 @@
         alpha: false
       });
       renderer3D.setSize(container.clientWidth, container.clientHeight);
-      renderer3D.setClearColor(0x000011, 1);
+      renderer3D.setClearColor(0x000000, 1); // Tactical black
       container.appendChild(renderer3D.domElement);
       
-      updateTerminalLog('3D', `Renderer created: ${container.clientWidth}x${container.clientHeight}`);
+      updateTerminalLog('3D', `Renderer created and added to container`);
       
-      // Lighting
-      const ambientLight = new THREE.AmbientLight(0x404040, 1.0);
+      // Tactical lighting - minimal ambient light
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
       scene3D.add(ambientLight);
       
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
-      directionalLight.position.set(30000, 20000, 30000);
-      scene3D.add(directionalLight);
-      
-      updateTerminalLog('3D', 'Lighting configured');
+      updateTerminalLog('3D', 'Tactical lighting configured');
       
       createEarth();
       setupGlobeControls();
       
-      updateTerminalLog('3D', 'Earth and controls created, waiting for satellites...');
+      updateTerminalLog('3D', 'Earth and controls initialized, waiting for satellite data...');
       
-      // Wait for satellites then create them
+      // Wait for satellite data then create satellites
       setTimeout(() => {
         if (satRecs && satRecs.length > 0) {
+          const validCount = satRecs.filter(r => r !== null).length;
+          updateTerminalLog('3D', `Found ${validCount} valid satellites, creating 3D objects...`);
           create3DSatellites();
           globe3D = true;
           animate3D();
-          updateTerminalLog('3D', 'Animation started');
+          updateTerminalLog('3D', 'Globe animation started - satellites should be visible!');
         } else {
-          updateTerminalLog('3D', 'No satellites available, retrying...');
+          updateTerminalLog('3D', 'No satellite data available, retrying in 2 seconds...');
           setTimeout(() => init3DGlobe(), 2000);
         }
       }, 1000);
     }
     
     function createEarth() {
+      updateTerminalLog('3D', 'Creating tactical Earth...');
+      
       const earthGeometry = new THREE.SphereGeometry(6371, 64, 64);
-      const earthMaterial = new THREE.MeshPhongMaterial({
-        color: 0x2244aa,
-        emissive: 0x112244,
-        emissiveIntensity: 0.1,
-        specular: 0x444444,
-        shininess: 30,
+      
+      // Tactical black Earth material
+      const earthMaterial = new THREE.MeshBasicMaterial({
+        color: 0x111111,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.8
       });
       
       earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
       scene3D.add(earthMesh);
       
-      // Wireframe overlay
+      updateTerminalLog('3D', 'Earth mesh created and added to scene');
+      
+      // Tactical wireframe overlay
       const wireframeGeometry = new THREE.SphereGeometry(6371, 32, 16);
       const wireframeMaterial = new THREE.MeshBasicMaterial({
-        color: 0x00aa00,
+        color: 0x00ff00,
         wireframe: true,
         transparent: true,
         opacity: 0.3
@@ -1284,24 +1298,31 @@
       const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
       earthMesh.add(wireframeMesh);
       
-      // Observer location
-      const markerGeometry = new THREE.SphereGeometry(100, 16, 16);
+      updateTerminalLog('3D', 'Wireframe overlay added');
+      
+      // Observer location marker - bright red tactical marker
+      const markerGeometry = new THREE.ConeGeometry(200, 400, 8);
       const markerMaterial = new THREE.MeshBasicMaterial({
         color: 0xff0000,
-        emissive: 0xff0000,
-        emissiveIntensity: 0.8
+        transparent: false
       });
       const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
       
       const lat = obs.lat * Math.PI / 180;
       const lon = obs.lon * Math.PI / 180;
-      const radius = 6371 + 50;
+      const radius = 6371 + 100;
       
       observerMarker.position.x = radius * Math.cos(lat) * Math.cos(lon);
       observerMarker.position.y = radius * Math.sin(lat);
       observerMarker.position.z = radius * Math.cos(lat) * Math.sin(lon);
       
+      // Point the cone towards earth center
+      observerMarker.lookAt(0, 0, 0);
+      observerMarker.rotateX(Math.PI);
+      
       scene3D.add(observerMarker);
+      
+      updateTerminalLog('3D', `Observer marker positioned at (${observerMarker.position.x.toFixed(0)}, ${observerMarker.position.y.toFixed(0)}, ${observerMarker.position.z.toFixed(0)})`);
     }
     
     function create3DSatellites() {
@@ -1477,7 +1498,7 @@
             color = 0x0000ff; // Blue for low altitude
           }
           
-          // Update visibility based on elevation
+          // Update colors based on selection and visibility
           if (obs && sat.material) {
             const gmst = satellite.gstime(currentTime);
             const observerGd = {
@@ -1491,9 +1512,12 @@
             const elevation = satellite.radiansToDegrees(lookAngles.elevation);
             
             const isVisible = elevation >= (obs.elevMin || 25);
+            const isSelected = selectedSatellite && selectedSatellite.index === sat.userData.index;
             
             if (sat.material.color && sat.material.color.setHex) {
-              if (isVisible) {
+              if (isSelected) {
+                sat.material.color.setHex(0xffffff); // White for selected
+              } else if (isVisible) {
                 sat.material.color.setHex(color);
               } else {
                 sat.material.color.setHex(0x444444);
@@ -1727,6 +1751,15 @@
       
       const startTime = performance.now();
       
+      // Save popup state before clearing
+      let popupToRestore = null;
+      if (map.isPopupOpen() && selectedSatellite) {
+        popupToRestore = {
+          index: selectedSatellite.index,
+          content: map.getPopup().getContent()
+        };
+      }
+      
       layerGroup.clearLayers();
       footprintGroup.clearLayers();
       trajectoryGroup.clearLayers();
@@ -1759,7 +1792,7 @@
         let color, radius, opacity;
         
         if (isSelected) {
-          color = '#ff00ff'; // Magenta: selected
+          color = '#ffffff'; // White: selected
           radius = 6;
           opacity = 1.0;
         } else if (isVisible) {
@@ -1845,7 +1878,7 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
             const trajectoryPoints = calculateTrajectory(rec, 15, 12);
             
             if (trajectoryPoints.length > 1) {
-              const trajectoryColor = isSelected ? '#ff00ff' : color;
+              const trajectoryColor = isSelected ? '#ffffff' : color;
               
               L.polyline(trajectoryPoints, {
                 color: trajectoryColor,
@@ -1867,10 +1900,10 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
             const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
             L.circle([st.lat, st.lon], {
               radius: footprintRadius * 1000,
-              color: isSelected ? '#ff00ff' : '#00ff00',
+              color: isSelected ? '#ffffff' : '#00ff00',
               weight: 2,
               opacity: 0.6,
-              fillColor: isSelected ? '#ff00ff' : '#00ff00',
+              fillColor: isSelected ? '#ffffff' : '#00ff00',
               fillOpacity: 0.1,
               interactive: false,
               dashArray: '5,10'
@@ -1898,6 +1931,16 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       `;
       
       updateStats(visible, drawn, satRecs.filter(r => r !== null).length);
+      
+      // Restore popup if it was open
+      if (popupToRestore) {
+        layerGroup.eachLayer((layer) => {
+          if (layer.satelliteIndex === popupToRestore.index) {
+            layer.openPopup();
+          }
+        });
+      }
+      
       isDrawing = false;
     }
     
@@ -1947,19 +1990,9 @@ FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
       
       updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}] - ${orbitType} orbit`);
       
-      // Refresh map to update colors and trajectories without closing popup
+      // Refresh map to update colors and trajectories 
       setTimeout(() => {
-        const currentPopupOpen = map.isPopupOpen();
         updateSatellites();
-        // If popup was open, keep it open
-        if (currentPopupOpen) {
-          // Find the marker with this index and reopen its popup
-          layerGroup.eachLayer((layer) => {
-            if (layer.satelliteIndex === index) {
-              layer.openPopup();
-            }
-          });
-        }
       }, 50);
     }
     
