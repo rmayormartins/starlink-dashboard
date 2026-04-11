@@ -1,0 +1,3120 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>STARLINK COMMANDER — Real-Time Constellation Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Real-time Starlink constellation tracker with SGP4 propagation, Ku/Ka-band link analysis and 3D globe visualization. Built by Ramon Mayor Martins at IFSC.">
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <!-- Satellite.js -->
+  <script src="https://unpkg.com/satellite.js@5.0.0/dist/satellite.min.js"></script>
+
+  <!-- Three.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <!-- Plotly -->
+  <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════
+       STARLINK COMMANDER — jasper-bernaers style theme
+       Terminal · compact · mono
+       Ramon Mayor Martins · IFSC · 2026
+       ═══════════════════════════════════════════════════════════════════ */
+
+    :root {
+      --jb-bg:          #0a0e12;
+      --jb-bg-2:        #0f1418;
+      --jb-panel:       #141a21;
+      --jb-panel-2:     #1a2129;
+      --jb-border:      #1f2731;
+      --jb-border-hi:   #2a3441;
+
+      --jb-text:        #c8d3df;
+      --jb-text-hi:     #e8eef5;
+      --jb-text-dim:    #7a8797;
+      --jb-text-mute:   #4a5666;
+
+      --jb-accent:      #5fb3ff;
+      --jb-green:       #4ade80;
+      --jb-green-dim:   #2a8040;
+      --jb-amber:       #ffb347;
+      --jb-orange:      #ff8c42;
+      --jb-red:         #ff5555;
+      --jb-cyan:        #56d4dd;
+
+      --jb-mono: 'JetBrains Mono', 'Fira Code', ui-monospace, SFMono-Regular,
+                 'SF Mono', Menlo, Consolas, 'Share Tech Mono', monospace;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { width: 100%; min-height: 100%; }
+
+    body {
+      font-family: var(--jb-mono);
+      background: var(--jb-bg);
+      color: var(--jb-text);
+      font-size: 12px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      background-image:
+        linear-gradient(180deg, rgba(74,222,128,0.012) 50%, transparent 50%);
+      background-size: 100% 3px;
+      overflow-x: hidden;
+    }
+
+    a { color: var(--jb-accent); text-decoration: none; }
+    a:hover { color: var(--jb-green); text-decoration: underline; }
+
+    /* ─── JASPER TOP PROMPT BAR ────────────────────────────────── */
+    .jb-topbar {
+      background: var(--jb-bg);
+      border-bottom: 1px solid var(--jb-border);
+      padding: 10px 20px;
+      font-family: var(--jb-mono);
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+    .jb-topbar-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .jb-topbar-left a { font-weight: 500; }
+    .jb-topbar-left .jb-path { color: var(--jb-text-dim); }
+    .jb-topbar-left .jb-sep  { color: var(--jb-border-hi); }
+    .jb-topbar-right {
+      display: flex; align-items: center; gap: 14px;
+      color: var(--jb-text-dim); font-size: 10px;
+    }
+    .jb-topbar-right .jb-live {
+      color: var(--jb-green); font-weight: 600;
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .jb-topbar-right .jb-live::before {
+      content: "●"; color: var(--jb-green);
+      animation: jb-pulse 1.8s infinite;
+    }
+    @keyframes jb-pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+    @keyframes pulse    { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    /* ─── HEADER ───────────────────────────────────────────────── */
+    /* Station-commander style title block (separate from stats strip) */
+    .jb-title-block {
+      padding: 28px 24px 20px;
+      background: var(--jb-bg);
+      border-bottom: 1px solid var(--jb-border);
+    }
+    .jb-title-block h1 {
+      font-family: var(--jb-mono);
+      font-size: 28px;
+      font-weight: 700;
+      color: #e6edf3;
+      margin: 0 0 10px;
+      letter-spacing: -0.3px;
+      line-height: 1.2;
+    }
+    .jb-title-block .jb-subtitle {
+      color: #8b949e;
+      font-size: 14px;
+      margin: 0;
+      line-height: 1.5;
+    }
+    .jb-title-block .jb-caret {
+      display: inline-block;
+      width: 8px;
+      height: 15px;
+      background: var(--jb-accent);
+      animation: jb-caret-blink 1.1s infinite;
+      vertical-align: middle;
+      margin-left: 2px;
+    }
+    @keyframes jb-caret-blink {
+      0%, 49%   { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+    .jb-title-block .jb-status-strip {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-top: 16px;
+      font-size: 12px;
+      flex-wrap: wrap;
+      color: #8b949e;
+    }
+    .jb-title-block .jb-status-strip .jb-sep {
+      color: #30363d;
+    }
+    .jb-title-block .jb-status-strip strong {
+      font-weight: 600;
+    }
+
+    /* compact stats-only header bar (after the title block) */
+    .header {
+      background: var(--jb-panel);
+      border-bottom: 1px solid var(--jb-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 20px;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .header-title { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .status-indicator {
+      width: 8px; height: 8px; background: var(--jb-green);
+      border-radius: 50%; animation: jb-status-pulse 2s infinite;
+      box-shadow: 0 0 6px var(--jb-green);
+    }
+    @keyframes jb-status-pulse { 0%,100% { opacity:1; } 50% { opacity:0.4; } }
+
+    .header h1 { /* deprecated — title moved to .jb-title-block */
+      display: none;
+    }
+
+    .header-stats { display: flex; gap: 18px; }
+    .stat-item {
+      display: flex; flex-direction: column; align-items: center;
+      min-width: 60px; padding: 2px 12px;
+      border-left: 2px solid var(--jb-border);
+    }
+    .stat-item:nth-child(1) { border-left-color: var(--jb-green); }
+    .stat-item:nth-child(2) { border-left-color: var(--jb-accent); }
+    .stat-item:nth-child(3) { border-left-color: var(--jb-amber); }
+    .stat-value {
+      font-size: 18px; font-weight: 700;
+      font-variant-numeric: tabular-nums; line-height: 1;
+    }
+    .stat-item:nth-child(1) .stat-value { color: var(--jb-green); }
+    .stat-item:nth-child(2) .stat-value { color: var(--jb-accent); }
+    .stat-item:nth-child(3) .stat-value { color: var(--jb-amber); }
+    .stat-label {
+      font-size: 8px; color: var(--jb-text-dim);
+      text-transform: uppercase; letter-spacing: 0.8px; margin-top: 3px;
+    }
+
+    #meta {
+      font-size: 9px; color: var(--jb-text-dim);
+      font-family: var(--jb-mono); margin-left: 8px;
+      padding: 2px 6px; border: 1px solid var(--jb-border);
+      background: var(--jb-bg);
+    }
+
+    /* ─── PAGE CONTAINER ───────────────────────────────────────── */
+    .page {
+      padding: 16px 20px 0;
+      max-width: 1600px;
+      margin: 0 auto;
+    }
+
+    /* ─── GENERIC CARD / SECTION ──────────────────────────────── */
+    .card {
+      background: var(--jb-panel);
+      border: 1px solid var(--jb-border);
+      margin-bottom: 16px;
+    }
+    .card-header {
+      padding: 10px 14px;
+      background: var(--jb-bg-2);
+      color: var(--jb-text-hi);
+      font-size: 11px;
+      font-weight: 600;
+      border-bottom: 1px solid var(--jb-border);
+    }
+    .card-header::before {
+      content: "▸ "; color: var(--jb-green); font-weight: 400;
+    }
+    .card-content { padding: 14px; }
+
+    /* ─── ROW 1: DATA GRID (3 cols) ────────────────────────────── */
+    .data-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .data-grid .card { margin-bottom: 0; }
+
+    /* ─── ROW 2: CONTROLS + MAP ────────────────────────────────── */
+    .work-row {
+      display: grid;
+      grid-template-columns: 320px 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    .controls-column {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .controls-column .card { margin-bottom: 0; }
+
+    .view-column {
+      background: var(--jb-panel);
+      border: 1px solid var(--jb-border);
+      display: flex;
+      flex-direction: column;
+      min-height: 560px;
+    }
+
+    /* ─── VIEW TABS ────────────────────────────────────────────── */
+    .view-tabs {
+      height: 36px;
+      background: var(--jb-bg-2);
+      border-bottom: 1px solid var(--jb-border);
+      display: flex;
+      align-items: center;
+      padding: 0 14px;
+      gap: 0;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      padding: 7px 16px;
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      color: var(--jb-text-dim);
+      font-family: var(--jb-mono);
+      font-size: 10px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn::before { content: "[ "; color: var(--jb-border-hi); }
+    .tab-btn::after  { content: " ]"; color: var(--jb-border-hi); }
+    .tab-btn:hover { color: var(--jb-text); }
+    .tab-btn.active {
+      color: var(--jb-green);
+      border-bottom-color: var(--jb-green);
+    }
+    .tab-btn.active::before { content: "[ "; color: var(--jb-green); }
+    .tab-btn.active::after  { content: " ]"; color: var(--jb-green); }
+
+    /* ─── VIEW CONTAINER / MAP / GLOBE ─────────────────────────── */
+    .view-container {
+      flex: 1;
+      position: relative;
+      background: #000;
+      min-height: 520px;
+    }
+    .view-content { width: 100%; height: 100%; display: none; position: absolute; inset: 0; }
+    .view-content.active { display: block; }
+    #map    { width: 100%; height: 100%; }
+    #globe  {
+      width: 100%; height: 100%;
+      background: radial-gradient(ellipse at center, #0a0e12 0%, #000 100%);
+    }
+
+    /* ─── MAP OVERLAY ──────────────────────────────────────────── */
+    .map-overlay {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: rgba(10,14,18,0.95);
+      border: 1px solid var(--jb-border-hi);
+      padding: 10px 12px;
+      min-width: 200px;
+      font-family: var(--jb-mono);
+      font-size: 10px;
+      z-index: 500;
+    }
+    .overlay-title {
+      color: var(--jb-green);
+      font-size: 9px;
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px solid var(--jb-border);
+      font-weight: 600;
+    }
+    .overlay-title::before { content: "▸ "; }
+
+    /* ─── DATA ROWS (label: value) ─────────────────────────────── */
+    .data-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin: 4px 0;
+      padding: 2px 0;
+      font-size: 10px;
+      gap: 10px;
+    }
+    .data-label {
+      color: var(--jb-text-dim);
+      font-size: 9px;
+      font-weight: 400;
+    }
+    .data-value {
+      color: var(--jb-green);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .data-value.good     { color: var(--jb-green); }
+    .data-value.warning  { color: var(--jb-amber); }
+    .data-value.critical { color: var(--jb-red); }
+
+    /* ─── LEGEND ───────────────────────────────────────────────── */
+    .legend {
+      position: absolute;
+      bottom: 12px; left: 12px;
+      background: rgba(10,14,18,0.95);
+      border: 1px solid var(--jb-border-hi);
+      padding: 8px 10px;
+      font-size: 9px;
+      z-index: 500;
+      pointer-events: auto;
+    }
+    .legend-title {
+      color: var(--jb-green);
+      font-size: 9px;
+      margin-bottom: 6px;
+      padding-bottom: 4px;
+      border-bottom: 1px solid var(--jb-border);
+      font-weight: 600;
+    }
+    .legend-title::before { content: "▸ "; }
+    .legend-item {
+      display: flex; align-items: center; gap: 6px; margin: 3px 0;
+      color: var(--jb-text-dim); font-size: 9px;
+    }
+    .legend-color {
+      width: 9px; height: 9px; border: 1px solid var(--jb-border-hi);
+    }
+
+    /* ─── CONTROLS (left column cards inner) ──────────────────── */
+    .control-group { margin-bottom: 10px; }
+    .control-label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--jb-text-dim);
+      font-size: 9px;
+      font-weight: 500;
+    }
+    .control-label::before { content: "$ "; color: var(--jb-green); opacity: 0.6; }
+    .control-input {
+      width: 100%;
+      padding: 6px 9px;
+      background: var(--jb-bg);
+      border: 1px solid var(--jb-border);
+      color: var(--jb-text-hi);
+      font-family: var(--jb-mono);
+      font-size: 11px;
+      border-radius: 0;
+      transition: border-color 0.12s;
+    }
+    .control-input:focus {
+      outline: none;
+      border-color: var(--jb-green);
+      box-shadow: 0 0 0 1px rgba(74,222,128,0.2);
+    }
+    input[type="range"] {
+      background: transparent;
+      accent-color: var(--jb-green);
+      height: 3px;
+    }
+
+    .checkbox-group {
+      display: flex; align-items: center; gap: 8px;
+      margin: 5px 0; padding: 1px 0;
+    }
+    .checkbox-group input[type="checkbox"] {
+      width: 12px; height: 12px; accent-color: var(--jb-green); cursor: pointer;
+    }
+    .checkbox-group label {
+      color: var(--jb-text-dim);
+      font-size: 10px;
+      font-weight: 400;
+      cursor: pointer;
+    }
+
+    /* ─── BUTTONS ──────────────────────────────────────────────── */
+    .btn {
+      width: 100%;
+      padding: 8px 12px;
+      background: transparent;
+      border: 1px solid var(--jb-border-hi);
+      color: var(--jb-text);
+      font-family: var(--jb-mono);
+      font-weight: 600;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.12s;
+      margin-bottom: 7px;
+      border-radius: 0;
+    }
+    .btn::before {
+      content: "> "; color: var(--jb-green); opacity: 0.6;
+    }
+    .btn:hover {
+      background: var(--jb-panel-2);
+      border-color: var(--jb-green);
+      color: var(--jb-green);
+    }
+    .btn:hover::before { opacity: 1; }
+    .btn.active {
+      background: rgba(74,222,128,0.08);
+      border-color: var(--jb-green);
+      color: var(--jb-green);
+    }
+    #btnApply { border-color: var(--jb-orange); color: var(--jb-orange); }
+    #btnApply::before { content: "> "; color: var(--jb-orange); opacity: 0.8; }
+    #btnApply:hover { background: rgba(255,140,66,0.08); color: var(--jb-text-hi); }
+
+    #btnPause { border-color: var(--jb-amber); color: var(--jb-amber); }
+    #btnPause::before { content: "> "; color: var(--jb-amber); opacity: 0.8; }
+    #btnPause:hover { background: rgba(255,179,71,0.08); color: var(--jb-text-hi); }
+
+    /* ─── SAT INFO GRID ────────────────────────────────────────── */
+    .sat-info-grid,
+    #orbital-info.sat-info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 12px;
+      font-family: var(--jb-mono);
+      font-size: 10px;
+    }
+    .sat-info-item {
+      display: flex; flex-direction: column;
+      padding: 6px 8px;
+      background: var(--jb-bg);
+      border: 1px solid var(--jb-border);
+      border-left: 2px solid var(--jb-border-hi);
+      transition: border-left-color 0.12s;
+    }
+    .sat-info-item:hover { border-left-color: var(--jb-green); }
+    .sat-info-label {
+      color: var(--jb-text-dim);
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+    .sat-info-value {
+      color: var(--jb-green);
+      font-size: 13px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      margin-top: 2px;
+      word-break: break-word;
+    }
+
+    .terminal-text {
+      font-family: var(--jb-mono);
+      white-space: pre;
+      line-height: 1.4;
+      color: var(--jb-green);
+      font-size: 9px;
+    }
+
+    /* ─── NEWS ROW (3 cards) ──────────────────────────────────── */
+    .news-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .news-grid .card { margin-bottom: 0; display: flex; flex-direction: column; }
+    .news-grid .card-content { flex: 1; max-height: 360px; overflow-y: auto; }
+
+    .news-item {
+      padding: 8px 0;
+      border-bottom: 1px dashed var(--jb-border);
+      font-size: 10px;
+    }
+    .news-item:last-child { border-bottom: none; }
+    .news-item .news-title {
+      color: var(--jb-text-hi);
+      font-weight: 600;
+      font-size: 11px;
+      line-height: 1.35;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .news-item a.news-title { color: var(--jb-text-hi); text-decoration: none; }
+    .news-item a.news-title:hover { color: var(--jb-green); text-decoration: underline; }
+    .news-item .news-meta {
+      color: var(--jb-text-mute);
+      font-size: 9px;
+      margin-bottom: 4px;
+    }
+    .news-item .news-meta .news-source {
+      color: var(--jb-accent);
+      margin-right: 6px;
+    }
+    .news-item .news-desc {
+      color: var(--jb-text-dim);
+      font-size: 9px;
+      line-height: 1.5;
+    }
+
+    .launch-item {
+      padding: 9px 0;
+      border-bottom: 1px dashed var(--jb-border);
+    }
+    .launch-item:last-child { border-bottom: none; }
+    .launch-name {
+      color: var(--jb-text-hi);
+      font-size: 11px;
+      font-weight: 600;
+      display: block;
+      margin-bottom: 3px;
+    }
+    .launch-meta {
+      color: var(--jb-text-dim);
+      font-size: 9px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .launch-meta .launch-date { color: var(--jb-amber); font-weight: 600; }
+    .launch-meta .launch-pad  { color: var(--jb-accent); }
+    .launch-status {
+      display: inline-block;
+      padding: 1px 6px;
+      font-size: 8px;
+      border: 1px solid var(--jb-border-hi);
+      margin-top: 3px;
+      text-transform: uppercase;
+    }
+    .launch-status.go  { color: var(--jb-green); border-color: var(--jb-green); }
+    .launch-status.tbd { color: var(--jb-amber); border-color: var(--jb-amber); }
+    .launch-status.hold{ color: var(--jb-red);   border-color: var(--jb-red); }
+
+    .news-loading {
+      color: var(--jb-text-mute);
+      font-size: 10px;
+      text-align: center;
+      padding: 20px 0;
+    }
+    .news-loading::before { content: "$ "; color: var(--jb-green); }
+
+    .quick-link {
+      display: block;
+      padding: 8px 10px;
+      border: 1px solid var(--jb-border);
+      border-left: 2px solid var(--jb-border-hi);
+      margin-bottom: 7px;
+      color: var(--jb-text);
+      font-size: 10px;
+      text-decoration: none;
+      transition: all 0.12s;
+    }
+    .quick-link:hover {
+      border-left-color: var(--jb-green);
+      background: var(--jb-bg-2);
+      color: var(--jb-green);
+      text-decoration: none;
+    }
+    .quick-link-icon { margin-right: 8px; opacity: 0.8; }
+    .quick-link-desc {
+      display: block;
+      color: var(--jb-text-mute);
+      font-size: 9px;
+      margin-top: 2px;
+    }
+    .quick-link:hover .quick-link-desc { color: var(--jb-text-dim); }
+
+    /* ─── SYSTEM LOG CARD ──────────────────────────────────────── */
+    .terminal {
+      height: 180px;
+      background: #050709;
+      border: 1px solid var(--jb-border);
+      padding: 9px 11px;
+      overflow-y: auto;
+      font-family: var(--jb-mono);
+      font-size: 9px;
+      line-height: 1.6;
+      color: var(--jb-green);
+    }
+    .terminal-line { margin: 1px 0; color: var(--jb-text); }
+    .terminal-line .time    { color: var(--jb-text-mute); }
+    .terminal-line .type    { color: var(--jb-green); font-weight: 600; }
+    .terminal-line .message { color: var(--jb-text); }
+
+    /* ─── LEAFLET POPUP ────────────────────────────────────────── */
+    .leaflet-popup-content-wrapper {
+      background: var(--jb-bg) !important;
+      border: 1px solid var(--jb-green) !important;
+      border-radius: 0 !important;
+      box-shadow: 0 0 12px rgba(74,222,128,0.2) !important;
+    }
+    .leaflet-popup-content {
+      color: var(--jb-text) !important;
+      font-family: var(--jb-mono) !important;
+      font-size: 10px !important;
+      margin: 9px 11px !important;
+      line-height: 1.5 !important;
+    }
+    .leaflet-popup-tip {
+      background: var(--jb-bg) !important;
+      border: 1px solid var(--jb-green) !important;
+      box-shadow: none !important;
+    }
+    .leaflet-popup-close-button {
+      color: var(--jb-green) !important;
+      font-size: 15px !important;
+      font-weight: bold !important;
+    }
+    .leaflet-popup-close-button:hover {
+      color: var(--jb-text-hi) !important;
+      background: rgba(74,222,128,0.15) !important;
+    }
+    .terminal-popup {
+      white-space: pre;
+      line-height: 1.5;
+      color: var(--jb-text);
+    }
+    .terminal-popup strong {
+      color: var(--jb-green);
+      display: block;
+      margin-bottom: 4px;
+      padding-bottom: 3px;
+      border-bottom: 1px dashed rgba(74,222,128,0.3);
+    }
+    .leaflet-interactive.selected-satellite {
+      filter: drop-shadow(0 0 7px var(--jb-green)) !important;
+      z-index: 1000 !important;
+    }
+    .leaflet-control-zoom a {
+      background: var(--jb-panel) !important;
+      color: var(--jb-green) !important;
+      border: 1px solid var(--jb-border) !important;
+    }
+    .leaflet-control-zoom a:hover {
+      background: var(--jb-panel-2) !important;
+      color: var(--jb-text-hi) !important;
+    }
+
+    /* ─── FOOTER ───────────────────────────────────────────────── */
+    .jb-footer {
+      background: var(--jb-bg);
+      border-top: 1px solid var(--jb-border);
+      padding: 12px 20px;
+      font-size: 10px;
+      color: var(--jb-text-dim);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-top: 4px;
+    }
+    .jb-footer .jb-sep { color: var(--jb-border-hi); margin: 0 4px; }
+    .jb-footer-left { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .jb-footer-right { color: var(--jb-text-mute); font-size: 9px; }
+
+    /* ─── SCROLLBAR ────────────────────────────────────────────── */
+    ::-webkit-scrollbar        { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track  { background: var(--jb-bg); }
+    ::-webkit-scrollbar-thumb  { background: var(--jb-border-hi); }
+    ::-webkit-scrollbar-thumb:hover { background: var(--jb-green-dim); }
+
+    /* ─── SPACECRAFT DIAGRAM ───────────────────────────────────── */
+    .diagram-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 0;
+    }
+    .diagram-svg-wrap {
+      padding: 20px 16px;
+      background:
+        radial-gradient(ellipse at center, rgba(74,222,128,0.04) 0%, transparent 70%),
+        #050709;
+      border-right: 1px solid var(--jb-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 360px;
+      position: relative;
+    }
+    .diagram-svg-wrap::before {
+      content: "SCALE: 1 unit \A ≈ 0.5 m";
+      white-space: pre;
+      position: absolute;
+      bottom: 8px;
+      left: 10px;
+      font-size: 8px;
+      color: var(--jb-text-mute);
+      line-height: 1.2;
+    }
+    .diagram-svg-wrap::after {
+      content: "STARLINK V2 MINI · BUS F9-2";
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 8px;
+      color: var(--jb-green);
+      letter-spacing: 0.5px;
+    }
+    .diagram-svg {
+      width: 100%;
+      height: auto;
+      max-width: 620px;
+    }
+    /* SVG element styles */
+    .sl-body        { fill: #1a2129; stroke: var(--jb-green); stroke-width: 1.2; }
+    .sl-body-dark   { fill: #0f1418; stroke: var(--jb-green); stroke-width: 1; }
+    .sl-panel       { fill: #0b1530; stroke: var(--jb-accent); stroke-width: 0.8; }
+    .sl-panel-line  { stroke: var(--jb-accent); stroke-width: 0.4; opacity: 0.5; }
+    .sl-antenna     { fill: #1f2731; stroke: var(--jb-amber); stroke-width: 0.8; }
+    .sl-thruster    { fill: #2a1810; stroke: var(--jb-orange); stroke-width: 1; }
+    .sl-laser       { fill: var(--jb-cyan); stroke: var(--jb-cyan); stroke-width: 0.5; }
+    .sl-star-tracker{ fill: var(--jb-panel); stroke: var(--jb-text-hi); stroke-width: 0.6; }
+    .sl-label-line  { stroke: var(--jb-text-dim); stroke-width: 0.5; fill: none; }
+    .sl-label-dot   { fill: var(--jb-green); stroke: none; }
+    .sl-label-text  {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      fill: var(--jb-text);
+    }
+    .sl-label-text.small { font-size: 7px; fill: var(--jb-text-dim); }
+    .sl-axis-label  {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7px;
+      fill: var(--jb-text-mute);
+    }
+    .sl-thrust-plume {
+      fill: url(#plume-gradient);
+      opacity: 0.6;
+    }
+    @keyframes sl-blink {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: 0.3; }
+    }
+    .sl-laser-beam { animation: sl-blink 2s infinite; }
+
+    .diagram-specs {
+      padding: 14px 16px;
+      background: var(--jb-panel);
+    }
+    .diagram-specs h4 {
+      font-family: var(--jb-mono);
+      font-size: 11px;
+      color: var(--jb-text-hi);
+      font-weight: 600;
+      margin-bottom: 8px;
+      padding-bottom: 5px;
+      border-bottom: 1px dashed var(--jb-border);
+    }
+    .diagram-specs h4::before {
+      content: "▸ ";
+      color: var(--jb-green);
+    }
+    .diagram-specs h4:not(:first-child) {
+      margin-top: 12px;
+    }
+    .spec-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      font-size: 9px;
+      padding: 2px 0;
+      gap: 10px;
+    }
+    .spec-row .spec-key {
+      color: var(--jb-text-dim);
+    }
+    .spec-row .spec-val {
+      color: var(--jb-green);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+    }
+    .diagram-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 14px;
+      padding: 12px 16px;
+      border-top: 1px solid var(--jb-border);
+      background: var(--jb-bg-2);
+      font-size: 9px;
+    }
+    .diagram-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      color: var(--jb-text-dim);
+    }
+    .diagram-legend-dot {
+      width: 8px;
+      height: 8px;
+      border: 1px solid currentColor;
+    }
+
+    /* ─── RESPONSIVE ───────────────────────────────────────────── */
+    @media (max-width: 1200px) {
+      .data-grid { grid-template-columns: 1fr 1fr; }
+      .news-grid { grid-template-columns: 1fr 1fr; }
+    }
+    @media (max-width: 900px) {
+      .work-row { grid-template-columns: 1fr; }
+      .data-grid { grid-template-columns: 1fr; }
+      .news-grid { grid-template-columns: 1fr; }
+      .diagram-row { grid-template-columns: 1fr; }
+      .diagram-svg-wrap { border-right: none; border-bottom: 1px solid var(--jb-border); min-height: 280px; }
+      .header { padding: 10px 14px; }
+      .jb-title-block { padding: 20px 14px 14px; }
+      .jb-title-block h1 { font-size: 22px; }
+      .jb-title-block .jb-subtitle { font-size: 12px; }
+      .jb-title-block .jb-status-strip { font-size: 11px; gap: 8px; }
+      .header-stats { gap: 10px; }
+      .stat-value { font-size: 15px; }
+      .page { padding: 12px 14px 0; }
+    }
+</style>
+</head>
+<body>
+
+  <!-- ═══ TOP PROMPT BAR ═══ -->
+  <div class="jb-topbar">
+    <div class="jb-topbar-left">
+      <a href="https://rmayormartins.github.io" target="_blank" rel="noopener">RamonMayorMartins.com</a>
+      <span class="jb-path">~/starlink-commander</span>
+      <span class="jb-sep">·</span>
+      <a href="https://www.ifsc.edu.br" target="_blank" rel="noopener">IFSC</a>
+    </div>
+    <div class="jb-topbar-right">
+      <span class="jb-live">LIVE</span>
+      <span class="jb-sep">·</span>
+      <span id="jb-utc-clock">-- : -- : -- UTC</span>
+    </div>
+  </div>
+
+  <!-- ═══ TITLE BLOCK (station-commander style) ═══ -->
+  <div class="jb-title-block">
+    <h1>Starlink Commander — Real-Time Constellation Tracker</h1>
+    <p class="jb-subtitle">
+      Live SGP4 propagation · phased array Ku/Ka link analysis · LEO tactical operations
+      <span class="jb-caret"></span>
+    </p>
+    <div class="jb-status-strip">
+      <span><strong style="color: var(--jb-green);" id="title-sat-count">~7,400</strong> active satellites · <strong style="color: var(--jb-accent);" id="title-v2mini-count">2,500+</strong> V2 Mini in orbit</span>
+      <span class="jb-sep">·</span>
+      <span>TLE source: <span style="color: var(--jb-green);" id="title-tle-source">celestrak.org</span></span>
+      <span class="jb-sep">·</span>
+      <span>Propagator: <span style="color: var(--jb-green);">satellite.js (SGP4)</span></span>
+      <span class="jb-sep">·</span>
+      <span>Updated: <span style="color: var(--jb-green);" id="title-updated">--</span></span>
+    </div>
+  </div>
+
+  <!-- ═══ STATS STRIP ═══ -->
+  <div class="header">
+    <div class="header-title">
+      <div class="status-indicator"></div>
+      <div id="meta">[INITIALIZING...]</div>
+    </div>
+    <div class="header-stats">
+      <div class="stat-item">
+        <div class="stat-value" id="stat-visible">0</div>
+        <div class="stat-label">Visible</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-tracked">0</div>
+        <div class="stat-label">Tracked</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value" id="stat-total">0</div>
+        <div class="stat-label">Total</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page">
+
+    <!-- ═══ ROW 1: DATA GRID (Satellite Data | Orbital Elements | Mission Status / RF) ═══ -->
+    <div class="data-grid">
+
+      <!-- Satellite Data -->
+      <div class="card">
+        <div class="card-header">Satellite Data</div>
+        <div class="card-content">
+          <div id="sat-info" class="sat-info-grid">
+            <div class="sat-info-item"><span class="sat-info-label">NORAD</span><span class="sat-info-value">---</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">NAME</span><span class="sat-info-value">---</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">ALTITUDE</span><span class="sat-info-value">---</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">VELOCITY</span><span class="sat-info-value">---</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">ELEVATION</span><span class="sat-info-value">---</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">AZIMUTH</span><span class="sat-info-value">---</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Orbital Elements -->
+      <div class="card">
+        <div class="card-header">Orbital Elements</div>
+        <div class="card-content">
+          <div id="orbital-info" class="sat-info-grid">
+            <div class="sat-info-item"><span class="sat-info-label">STATUS</span><span class="sat-info-value">NO SATELLITE</span></div>
+            <div class="sat-info-item"><span class="sat-info-label">ACTION</span><span class="sat-info-value">SELECT SAT</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mission Status + RF Link Analysis -->
+      <div class="card">
+        <div class="card-header">Mission Status &amp; RF Link</div>
+        <div class="card-content">
+          <div id="visibleInfo">
+            <div class="data-row">
+              <span class="data-label">STATUS:</span>
+              <span class="data-value">INITIALIZING</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">RENDER:</span>
+              <span class="data-value">0 ms</span>
+            </div>
+            <div class="data-row">
+              <span class="data-label">LINK:</span>
+              <span class="data-value good">OPERATIONAL</span>
+            </div>
+          </div>
+          <div style="margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--jb-border);">
+            <div class="data-row"><span class="data-label">FREQ DL:</span><span class="data-value">10.7-12.7 GHz</span></div>
+            <div class="data-row"><span class="data-label">FREQ UL:</span><span class="data-value">14.0-14.5 GHz</span></div>
+            <div class="data-row"><span class="data-label">RX POWER:</span><span class="data-value" id="rf-power">---</span></div>
+            <div class="data-row"><span class="data-label">FSPL:</span><span class="data-value" id="rf-fspl">---</span></div>
+            <div class="data-row"><span class="data-label">LINK STATUS:</span><span class="data-value" id="rf-status">---</span></div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /.data-grid -->
+
+    <!-- ═══ ROW 2: CONTROLS (left) + MAP (right) ═══ -->
+    <div class="work-row">
+
+      <!-- Controls column -->
+      <div class="controls-column">
+
+        <div class="card">
+          <div class="card-header">Target Operation</div>
+          <div class="card-content">
+            <div class="control-group">
+              <label class="control-label">Latitude</label>
+              <input type="number" id="lat" class="control-input" value="-27.588" step="0.001">
+            </div>
+            <div class="control-group">
+              <label class="control-label">Longitude</label>
+              <input type="number" id="lon" class="control-input" value="-48.613" step="0.001">
+            </div>
+            <div class="control-group">
+              <label class="control-label">Min Elevation (°)</label>
+              <input type="number" id="elevMin" class="control-input" value="25" min="0" max="90" step="5">
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="showFootprints" checked>
+              <label for="showFootprints">Show Footprints</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="footprintSelectedOnly">
+              <label for="footprintSelectedOnly">Selected Only</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="showTrajectory">
+              <label for="showTrajectory">Show Trajectory</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="trajectorySelectedOnly">
+              <label for="trajectorySelectedOnly">Selected Only</label>
+            </div>
+            <button class="btn" id="btnApply">EXECUTE</button>
+            <button class="btn" id="btnPause">PAUSE ORBITS</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">Orbit Filters</div>
+          <div class="card-content">
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterLEO" checked>
+              <label for="filterLEO">LEO (&lt;2000km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterMEO" checked>
+              <label for="filterMEO">MEO (2000-35786km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterHEO" checked>
+              <label for="filterHEO">HEO (&gt;35786km)</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterVisible" checked>
+              <label for="filterVisible">All Visible</label>
+            </div>
+            <div class="checkbox-group">
+              <input type="checkbox" id="filterAll" checked>
+              <label for="filterAll">All Possible</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">3D Controls</div>
+          <div class="card-content">
+            <button class="btn" onclick="resetGlobeView()">RESET VIEW</button>
+            <button class="btn" onclick="toggleRotation()">AUTO ROTATE</button>
+            <div class="control-group" style="margin-top: 10px;">
+              <label class="control-label">Orbit Speed</label>
+              <input type="range" id="orbitSpeed" min="1" max="100" value="10" style="width: 100%;">
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /.controls-column -->
+
+      <!-- Map / Globe column -->
+      <div class="view-column">
+        <div class="view-tabs">
+          <button class="tab-btn active" onclick="switchView('map')">2D MERCATOR</button>
+          <button class="tab-btn" onclick="switchView('globe')">3D GLOBE</button>
+        </div>
+        <div class="view-container">
+
+          <!-- 2D Map -->
+          <div id="map-view" class="view-content active">
+            <div id="map"></div>
+            <div class="map-overlay">
+              <div class="overlay-title">Target Details</div>
+              <div id="targetInfo">
+                <div class="data-row"><span class="data-label">SAT ID:</span><span class="data-value">---</span></div>
+                <div class="data-row"><span class="data-label">ELEV:</span><span class="data-value">---</span></div>
+                <div class="data-row"><span class="data-label">AZIM:</span><span class="data-value">---</span></div>
+                <div class="data-row"><span class="data-label">RANGE:</span><span class="data-value">---</span></div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-title">Satellite Status</div>
+              <div class="legend-item"><div class="legend-color" style="background:#ff0000;"></div><span>HIGH ALT (&gt;600km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#ffff00;"></div><span>MED ALT (550-600km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#00ff00;"></div><span>NORM ALT (500-550km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#0000ff;"></div><span>LOW ALT (&lt;500km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#ffffff;"></div><span>SELECTED</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#006600;"></div><span>NOT VISIBLE</span></div>
+            </div>
+          </div>
+
+          <!-- 3D Globe -->
+          <div id="globe-view" class="view-content">
+            <div id="globe"></div>
+            <div class="map-overlay">
+              <div class="overlay-title">Globe Statistics</div>
+              <div id="globeInfo">
+                <div class="data-row"><span class="data-label">SATELLITES:</span><span class="data-value" id="globe-sats">0</span></div>
+                <div class="data-row"><span class="data-label">FPS:</span><span class="data-value" id="globe-fps">0</span></div>
+                <div class="data-row"><span class="data-label">ROTATION:</span><span class="data-value" id="globe-rotation">OFF</span></div>
+                <div class="data-row"><span class="data-label">ORBITS:</span><span class="data-value" id="globe-orbits">ACTIVE</span></div>
+                <div class="data-row"><span class="data-label">TIME:</span><span class="data-value" id="globe-time">00:00:00</span></div>
+              </div>
+            </div>
+            <div class="legend">
+              <div class="legend-title">Altitude Color Code</div>
+              <div class="legend-item"><div class="legend-color" style="background:#ff0000;"></div><span>HIGH (&gt;600km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#ffff00;"></div><span>MEDIUM (550-600km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#00ff00;"></div><span>NORMAL (500-550km)</span></div>
+              <div class="legend-item"><div class="legend-color" style="background:#0000ff;"></div><span>LOW (&lt;500km)</span></div>
+            </div>
+          </div>
+
+        </div>
+      </div><!-- /.view-column -->
+
+    </div><!-- /.work-row -->
+
+    <!-- ═══ ROW 3: NEWS (3 cards: Upcoming launches | RSS feed | Quick links) ═══ -->
+    <div class="news-grid">
+
+      <!-- Upcoming Starlink Launches -->
+      <div class="card">
+        <div class="card-header">Upcoming Starlink Launches</div>
+        <div class="card-content">
+          <div id="launches-feed">
+            <div class="news-loading">Loading next launches...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- RSS News Feed -->
+      <div class="card">
+        <div class="card-header">Starlink News Feed</div>
+        <div class="card-content">
+          <div id="news-feed">
+            <div class="news-loading">Loading news...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Links -->
+      <div class="card">
+        <div class="card-header">Quick Links</div>
+        <div class="card-content">
+          <a class="quick-link" href="https://www.spacex.com/launches/" target="_blank" rel="noopener">
+            <span class="quick-link-icon">🚀</span>SpaceX Launches
+            <span class="quick-link-desc">Official SpaceX launch manifest</span>
+          </a>
+          <a class="quick-link" href="https://www.starlink.com/" target="_blank" rel="noopener">
+            <span class="quick-link-icon">🛰</span>Starlink Official
+            <span class="quick-link-desc">Starlink service & coverage map</span>
+          </a>
+          <a class="quick-link" href="https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink&amp;FORMAT=tle" target="_blank" rel="noopener">
+            <span class="quick-link-icon">📡</span>CelesTrak Starlink TLE
+            <span class="quick-link-desc">Live TLE data source</span>
+          </a>
+          <a class="quick-link" href="https://satellitemap.space/" target="_blank" rel="noopener">
+            <span class="quick-link-icon">🗺</span>SatelliteMap.space
+            <span class="quick-link-desc">Alternative 3D Starlink map</span>
+          </a>
+          <a class="quick-link" href="https://planet4589.org/space/con/star/stats.html" target="_blank" rel="noopener">
+            <span class="quick-link-icon">📊</span>Jonathan's Space Report
+            <span class="quick-link-desc">Starlink statistics & timeline</span>
+          </a>
+          <a class="quick-link" href="https://rmayormartins.github.io/orbital-command/" target="_blank" rel="noopener">
+            <span class="quick-link-icon">🛸</span>Orbital Command
+            <span class="quick-link-desc">ISS &amp; Tiangong tracker</span>
+          </a>
+          <a class="quick-link" href="https://github.com/rmayormartins/starlink-dashboard" target="_blank" rel="noopener">
+            <span class="quick-link-icon">💾</span>Source Code
+            <span class="quick-link-desc">GitHub repository</span>
+          </a>
+        </div>
+      </div>
+
+    </div><!-- /.news-grid -->
+
+    <!-- ═══ SPACECRAFT DIAGRAM ═══ -->
+    <div class="card">
+      <div class="card-header">Spacecraft Structure — Starlink V2 Mini</div>
+      <div class="diagram-row">
+
+        <!-- SVG diagram -->
+        <div class="diagram-svg-wrap">
+          <svg class="diagram-svg" viewBox="0 0 640 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Starlink V2 Mini spacecraft structural diagram">
+            <defs>
+              <linearGradient id="plume-gradient" x1="0" y1="0" x2="1" y2="0">
+                <stop offset="0%"  stop-color="#ff8c42" stop-opacity="0.8"/>
+                <stop offset="60%" stop-color="#ffb347" stop-opacity="0.3"/>
+                <stop offset="100%" stop-color="#ffb347" stop-opacity="0"/>
+              </linearGradient>
+              <pattern id="solar-cells" x="0" y="0" width="8" height="8" patternUnits="userSpaceOnUse">
+                <rect width="8" height="8" fill="#0b1530"/>
+                <line x1="0" y1="0" x2="8" y2="0" stroke="#5fb3ff" stroke-width="0.3" opacity="0.4"/>
+                <line x1="0" y1="4" x2="8" y2="4" stroke="#5fb3ff" stroke-width="0.3" opacity="0.4"/>
+                <line x1="0" y1="0" x2="0" y2="8" stroke="#5fb3ff" stroke-width="0.3" opacity="0.4"/>
+                <line x1="4" y1="0" x2="4" y2="8" stroke="#5fb3ff" stroke-width="0.3" opacity="0.4"/>
+              </pattern>
+            </defs>
+
+            <!-- ═ DEEP-SPACE BACKDROP DOTS (stars) ═ -->
+            <g opacity="0.4">
+              <circle cx="50"  cy="40"  r="0.8" fill="#e8eef5"/>
+              <circle cx="120" cy="25"  r="0.6" fill="#c8d3df"/>
+              <circle cx="210" cy="55"  r="0.7" fill="#e8eef5"/>
+              <circle cx="440" cy="30"  r="0.9" fill="#e8eef5"/>
+              <circle cx="540" cy="60"  r="0.5" fill="#c8d3df"/>
+              <circle cx="590" cy="20"  r="0.7" fill="#e8eef5"/>
+              <circle cx="70"  cy="310" r="0.6" fill="#c8d3df"/>
+              <circle cx="180" cy="335" r="0.8" fill="#e8eef5"/>
+              <circle cx="380" cy="320" r="0.5" fill="#c8d3df"/>
+              <circle cx="560" cy="340" r="0.7" fill="#e8eef5"/>
+            </g>
+
+            <!-- ═ DIMENSIONS RULE (top) ═ -->
+            <g class="sl-axis-label">
+              <line x1="90"  y1="90" x2="550" y2="90" stroke="#4a5666" stroke-width="0.4" stroke-dasharray="2,2"/>
+              <line x1="90"  y1="86" x2="90"  y2="94" stroke="#4a5666" stroke-width="0.4"/>
+              <line x1="550" y1="86" x2="550" y2="94" stroke="#4a5666" stroke-width="0.4"/>
+              <text x="320" y="85" text-anchor="middle">30 m wingspan (deployed)</text>
+            </g>
+
+            <!-- ═ LEFT SOLAR ARRAY ═ -->
+            <g>
+              <rect x="90" y="140" width="200" height="60" class="sl-panel" fill="url(#solar-cells)"/>
+              <!-- cell grid dividers -->
+              <line x1="140" y1="140" x2="140" y2="200" class="sl-panel-line"/>
+              <line x1="190" y1="140" x2="190" y2="200" class="sl-panel-line"/>
+              <line x1="240" y1="140" x2="240" y2="200" class="sl-panel-line"/>
+              <line x1="90"  y1="170" x2="290" y2="170" class="sl-panel-line"/>
+              <!-- yoke connecting panel to body -->
+              <rect x="288" y="162" width="12" height="16" fill="#1f2731" stroke="#4ade80" stroke-width="0.6"/>
+            </g>
+
+            <!-- ═ RIGHT SOLAR ARRAY ═ -->
+            <g>
+              <rect x="350" y="140" width="200" height="60" class="sl-panel" fill="url(#solar-cells)"/>
+              <line x1="400" y1="140" x2="400" y2="200" class="sl-panel-line"/>
+              <line x1="450" y1="140" x2="450" y2="200" class="sl-panel-line"/>
+              <line x1="500" y1="140" x2="500" y2="200" class="sl-panel-line"/>
+              <line x1="350" y1="170" x2="550" y2="170" class="sl-panel-line"/>
+              <rect x="340" y="162" width="12" height="16" fill="#1f2731" stroke="#4ade80" stroke-width="0.6"/>
+            </g>
+
+            <!-- ═ MAIN BUS (central body) ═ -->
+            <g>
+              <!-- main chassis -->
+              <rect x="290" y="150" width="60" height="40" class="sl-body"/>
+              <!-- top deck details -->
+              <rect x="296" y="154" width="12" height="6" class="sl-body-dark"/>
+              <rect x="312" y="154" width="12" height="6" class="sl-body-dark"/>
+              <rect x="328" y="154" width="16" height="6" class="sl-body-dark"/>
+              <!-- side lines -->
+              <line x1="290" y1="170" x2="350" y2="170" stroke="#4ade80" stroke-width="0.4" opacity="0.5"/>
+              <!-- bottom deck (phased array antenna face, Earth-facing) -->
+              <rect x="292" y="188" width="56" height="8" fill="#0a1a0a" stroke="#4ade80" stroke-width="0.8"/>
+              <!-- antenna element grid (phased array) -->
+              <g fill="#4ade80" opacity="0.7">
+                <circle cx="298" cy="192" r="0.8"/><circle cx="304" cy="192" r="0.8"/>
+                <circle cx="310" cy="192" r="0.8"/><circle cx="316" cy="192" r="0.8"/>
+                <circle cx="322" cy="192" r="0.8"/><circle cx="328" cy="192" r="0.8"/>
+                <circle cx="334" cy="192" r="0.8"/><circle cx="340" cy="192" r="0.8"/>
+              </g>
+            </g>
+
+            <!-- ═ STAR TRACKER (top, nadir-opposite) ═ -->
+            <g>
+              <rect x="314" y="142" width="12" height="8" class="sl-star-tracker"/>
+              <circle cx="320" cy="146" r="2" fill="#5fb3ff" opacity="0.6"/>
+            </g>
+
+            <!-- ═ LASER INTER-SATELLITE LINKS (sides of bus) ═ -->
+            <g>
+              <!-- left laser -->
+              <rect x="284" y="164" width="6" height="10" class="sl-body-dark"/>
+              <circle cx="282" cy="169" r="1.5" class="sl-laser"/>
+              <!-- beam indicator -->
+              <line x1="280" y1="169" x2="260" y2="169" stroke="#56d4dd" stroke-width="0.6" class="sl-laser-beam" stroke-dasharray="2,2"/>
+
+              <!-- right laser -->
+              <rect x="350" y="164" width="6" height="10" class="sl-body-dark"/>
+              <circle cx="358" cy="169" r="1.5" class="sl-laser"/>
+              <line x1="360" y1="169" x2="380" y2="169" stroke="#56d4dd" stroke-width="0.6" class="sl-laser-beam" stroke-dasharray="2,2"/>
+            </g>
+
+            <!-- ═ HALL THRUSTERS (rear, facing away from Earth/direction of travel) ═ -->
+            <g>
+              <!-- thruster nozzle -->
+              <rect x="316" y="196" width="8" height="10" class="sl-thruster"/>
+              <circle cx="320" cy="206" r="2.5" fill="#ff8c42" stroke="#ffb347" stroke-width="0.5"/>
+              <!-- thrust plume -->
+              <ellipse cx="320" cy="220" rx="6" ry="14" class="sl-thrust-plume" transform="rotate(0 320 220)"/>
+            </g>
+
+            <!-- ═ LABEL LINES + TEXT ═ -->
+            <!-- (1) Solar array -->
+            <g>
+              <line x1="180" y1="140" x2="180" y2="115" class="sl-label-line"/>
+              <circle cx="180" cy="140" r="1.5" class="sl-label-dot"/>
+              <text x="180" y="110" text-anchor="middle" class="sl-label-text">[1] SOLAR ARRAY</text>
+              <text x="180" y="120" text-anchor="middle" class="sl-label-text small">2 × 52.5 m² · 30 m span</text>
+            </g>
+
+            <!-- (2) Main bus -->
+            <g>
+              <line x1="320" y1="150" x2="320" y2="118" class="sl-label-line"/>
+              <circle cx="320" cy="150" r="1.5" class="sl-label-dot"/>
+              <text x="320" y="113" text-anchor="middle" class="sl-label-text">[2] MAIN BUS</text>
+              <text x="320" y="123" text-anchor="middle" class="sl-label-text small">4.1 × 2.7 m · 800 kg</text>
+            </g>
+
+            <!-- (3) Star tracker -->
+            <g>
+              <line x1="320" y1="142" x2="400" y2="100" class="sl-label-line"/>
+              <circle cx="320" cy="142" r="1.5" class="sl-label-dot"/>
+              <text x="402" y="98" class="sl-label-text">[3] STAR TRACKER</text>
+              <text x="402" y="108" class="sl-label-text small">attitude determination</text>
+            </g>
+
+            <!-- (4) Phased array antenna -->
+            <g>
+              <line x1="320" y1="196" x2="200" y2="260" class="sl-label-line"/>
+              <circle cx="320" cy="196" r="1.5" class="sl-label-dot"/>
+              <text x="195" y="264" text-anchor="end" class="sl-label-text">[4] PHASED ARRAY ANTENNA</text>
+              <text x="195" y="274" text-anchor="end" class="sl-label-text small">Ku/Ka/E-band · Earth-facing</text>
+            </g>
+
+            <!-- (5) Laser inter-satellite link -->
+            <g>
+              <line x1="282" y1="169" x2="170" y2="230" class="sl-label-line"/>
+              <circle cx="282" cy="169" r="1.5" class="sl-label-dot"/>
+              <text x="165" y="234" text-anchor="end" class="sl-label-text">[5] LASER INTER-SAT LINK</text>
+              <text x="165" y="244" text-anchor="end" class="sl-label-text small">~200 Gbps optical mesh</text>
+            </g>
+
+            <!-- (6) Hall thruster -->
+            <g>
+              <line x1="320" y1="210" x2="440" y2="260" class="sl-label-line"/>
+              <circle cx="320" cy="210" r="1.5" class="sl-label-dot"/>
+              <text x="445" y="264" class="sl-label-text">[6] ARGON HALL THRUSTER</text>
+              <text x="445" y="274" class="sl-label-text small">170 mN · 2500 s Isp · 4.2 kW</text>
+            </g>
+
+            <!-- (7) Yoke / deployment hinge -->
+            <g>
+              <line x1="296" y1="170" x2="220" y2="305" class="sl-label-line"/>
+              <circle cx="296" cy="170" r="1.5" class="sl-label-dot"/>
+              <text x="215" y="308" text-anchor="end" class="sl-label-text">[7] DEPLOYMENT YOKE</text>
+            </g>
+
+            <!-- axis indicator -->
+            <g class="sl-axis-label">
+              <line x1="50" y1="310" x2="80" y2="310" stroke="#4a5666" stroke-width="0.6"/>
+              <polygon points="80,310 76,308 76,312" fill="#4a5666"/>
+              <text x="82" y="313">velocity</text>
+
+              <line x1="50" y1="310" x2="50" y2="280" stroke="#4a5666" stroke-width="0.6"/>
+              <polygon points="50,280 48,284 52,284" fill="#4a5666"/>
+              <text x="53" y="278">nadir (Earth)</text>
+            </g>
+
+          </svg>
+        </div>
+
+        <!-- Specs column -->
+        <div class="diagram-specs">
+          <h4>Bus &amp; Mass</h4>
+          <div class="spec-row"><span class="spec-key">Bus variant</span><span class="spec-val">F9-2 (V2 Mini)</span></div>
+          <div class="spec-row"><span class="spec-key">Dimensions</span><span class="spec-val">4.1 × 2.7 m</span></div>
+          <div class="spec-row"><span class="spec-key">Mass (wet)</span><span class="spec-val">~800 kg</span></div>
+          <div class="spec-row"><span class="spec-key">Wingspan</span><span class="spec-val">~30 m</span></div>
+          <div class="spec-row"><span class="spec-key">Per F9 launch</span><span class="spec-val">21–29 sats</span></div>
+
+          <h4>Power</h4>
+          <div class="spec-row"><span class="spec-key">Solar arrays</span><span class="spec-val">2 × 52.5 m²</span></div>
+          <div class="spec-row"><span class="spec-key">Total area</span><span class="spec-val">~120 m²</span></div>
+          <div class="spec-row"><span class="spec-key">Cell type</span><span class="spec-val">GaAs multi-junction</span></div>
+
+          <h4>Propulsion</h4>
+          <div class="spec-row"><span class="spec-key">Thruster</span><span class="spec-val">Argon Hall</span></div>
+          <div class="spec-row"><span class="spec-key">Thrust</span><span class="spec-val">170 mN</span></div>
+          <div class="spec-row"><span class="spec-key">Specific impulse</span><span class="spec-val">2500 s</span></div>
+          <div class="spec-row"><span class="spec-key">Power</span><span class="spec-val">4.2 kW</span></div>
+
+          <h4>Communications</h4>
+          <div class="spec-row"><span class="spec-key">Downlink</span><span class="spec-val">Ku 10.7-12.7 GHz</span></div>
+          <div class="spec-row"><span class="spec-key">Uplink</span><span class="spec-val">Ka 14.0-14.5 GHz</span></div>
+          <div class="spec-row"><span class="spec-key">Backhaul</span><span class="spec-val">E-band 71-86 GHz</span></div>
+          <div class="spec-row"><span class="spec-key">ISL</span><span class="spec-val">Optical laser mesh</span></div>
+
+          <h4>Orbit</h4>
+          <div class="spec-row"><span class="spec-key">Altitude</span><span class="spec-val">540–570 km</span></div>
+          <div class="spec-row"><span class="spec-key">Inclination</span><span class="spec-val">43° / 53°</span></div>
+          <div class="spec-row"><span class="spec-key">Period</span><span class="spec-val">~95 min</span></div>
+        </div>
+      </div>
+
+      <!-- Legend strip -->
+      <div class="diagram-legend">
+        <div class="diagram-legend-item" style="color:#5fb3ff;"><div class="diagram-legend-dot" style="background:#0b1530;"></div>Solar array</div>
+        <div class="diagram-legend-item" style="color:#4ade80;"><div class="diagram-legend-dot" style="background:#1a2129;"></div>Bus chassis</div>
+        <div class="diagram-legend-item" style="color:#4ade80;"><div class="diagram-legend-dot" style="background:#0a1a0a;"></div>Phased array (Ku/Ka)</div>
+        <div class="diagram-legend-item" style="color:#56d4dd;"><div class="diagram-legend-dot" style="background:#56d4dd;"></div>Laser inter-sat link</div>
+        <div class="diagram-legend-item" style="color:#ff8c42;"><div class="diagram-legend-dot" style="background:#2a1810;"></div>Argon Hall thruster</div>
+        <div class="diagram-legend-item" style="color:#e8eef5;"><div class="diagram-legend-dot" style="background:#141a21;"></div>Star tracker</div>
+      </div>
+    </div>
+
+    <!-- ═══ ROW 4: SYSTEM LOG ═══ -->
+    <div class="card">
+      <div class="card-header">System Log</div>
+      <div class="card-content" style="padding: 0;">
+        <div class="terminal" id="terminalOutput"></div>
+      </div>
+    </div>
+
+  </div><!-- /.page -->
+
+  <!-- ═══ FOOTER ═══ -->
+  <div class="jb-footer">
+    <div class="jb-footer-left">
+      <span class="jb-path">rmayormartins.github.io/starlink-commander</span>
+      <span class="jb-sep">·</span>
+      <a href="https://rmayormartins.github.io/orbital-command/" target="_blank" rel="noopener">orbital-command</a>
+      <span class="jb-sep">·</span>
+      <a href="https://github.com/rmayormartins/starlink-dashboard" target="_blank" rel="noopener">github</a>
+      <span class="jb-sep">·</span>
+      <a href="https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink" target="_blank" rel="noopener">celestrak TLE</a>
+    </div>
+    <div class="jb-footer-right">
+      Ramon Mayor Martins, Ph.D. · IFSC · Leaflet + satellite.js + Three.js
+    </div>
+  </div>
+
+  <!-- ═══ Auxiliary scripts: UTC clock + news/launches loaders ═══ -->
+  <script>
+  (function() {
+    // ─── UTC clock ───
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function tick() {
+      var d = new Date();
+      var el = document.getElementById("jb-utc-clock");
+      if (el) {
+        el.textContent = pad(d.getUTCHours()) + " : " +
+                         pad(d.getUTCMinutes()) + " : " +
+                         pad(d.getUTCSeconds()) + " UTC";
+      }
+    }
+    tick(); setInterval(tick, 1000);
+
+    // ─── Title status strip — meta.json loader ───
+    // Pulls live counts from data/meta.json (the same file the main script uses).
+    // Fallback values stay in place if fetch fails.
+    function fmtNumber(n) {
+      if (typeof n !== "number" || !isFinite(n)) return "--";
+      return n.toLocaleString("en-US");
+    }
+    function fmtRelativeTime(iso) {
+      try {
+        var d = new Date(iso);
+        if (isNaN(d)) return "--";
+        var diffSec = Math.floor((Date.now() - d.getTime()) / 1000);
+        if (diffSec < 60)    return diffSec + "s ago";
+        if (diffSec < 3600)  return Math.floor(diffSec / 60) + "m ago";
+        if (diffSec < 86400) return Math.floor(diffSec / 3600) + "h ago";
+        return Math.floor(diffSec / 86400) + "d ago";
+      } catch (e) { return "--"; }
+    }
+    function applyTitleMeta(meta) {
+      if (!meta) return;
+      var elCount   = document.getElementById("title-sat-count");
+      var elV2      = document.getElementById("title-v2mini-count");
+      var elSrc     = document.getElementById("title-tle-source");
+      var elUpdated = document.getElementById("title-updated");
+
+      if (elCount && typeof meta.count === "number") {
+        elCount.textContent = fmtNumber(meta.count);
+      }
+      if (elV2 && typeof meta.count === "number") {
+        // V2 Mini is roughly 35-40% of the active fleet (Dec 2025 estimate);
+        // we round down to nearest 100 for a clean display number.
+        var v2est = Math.floor((meta.count * 0.38) / 100) * 100;
+        elV2.textContent = "~" + fmtNumber(v2est);
+      }
+      if (elSrc && meta.source) {
+        // Strip protocol/path: "https://celestrak.org/..." → "celestrak.org"
+        var src = String(meta.source);
+        var m = src.match(/^https?:\/\/([^\/]+)/);
+        elSrc.textContent = m ? m[1] : src;
+      }
+      if (elUpdated && meta.updatedAt) {
+        elUpdated.textContent = fmtRelativeTime(meta.updatedAt);
+      }
+    }
+    function loadTitleMeta() {
+      fetch("data/meta.json", { cache: "no-store" })
+        .then(function(r) { return r.ok ? r.json() : Promise.reject("HTTP " + r.status); })
+        .then(applyTitleMeta)
+        .catch(function() { /* keep fallback values */ });
+    }
+    // Refresh the "X ago" timestamp every 30s without re-fetching meta.json
+    var lastMetaCache = null;
+    function refreshTitleTimestamp() {
+      if (lastMetaCache && lastMetaCache.updatedAt) {
+        var elUpdated = document.getElementById("title-updated");
+        if (elUpdated) elUpdated.textContent = fmtRelativeTime(lastMetaCache.updatedAt);
+      }
+    }
+    // Wrap applyTitleMeta to also cache the meta object
+    var _origApply = applyTitleMeta;
+    applyTitleMeta = function(meta) {
+      lastMetaCache = meta;
+      _origApply(meta);
+    };
+    loadTitleMeta();
+    setInterval(refreshTitleTimestamp, 30000);
+    // Re-fetch every 5 minutes in case the workflow updated the file
+    setInterval(loadTitleMeta, 5 * 60 * 1000);
+
+    // ─── Upcoming Starlink Launches (Launch Library 2 API) ───
+    function loadLaunches() {
+      var url = "https://ll.thespacedevs.com/2.2.0/launch/upcoming/?search=starlink&limit=6&mode=list";
+      fetch(url)
+        .then(function(r) { return r.ok ? r.json() : Promise.reject("HTTP " + r.status); })
+        .then(function(data) {
+          var container = document.getElementById("launches-feed");
+          if (!container) return;
+          var results = (data.results || []).filter(function(l) {
+            return (l.name || "").toLowerCase().indexOf("starlink") !== -1;
+          });
+          if (results.length === 0) {
+            container.innerHTML = '<div class="news-loading">No upcoming Starlink launches found.</div>';
+            return;
+          }
+          container.innerHTML = results.map(function(l) {
+            var date = l.net ? new Date(l.net).toLocaleString("pt-BR", {
+              day: "2-digit", month: "short", year: "numeric",
+              hour: "2-digit", minute: "2-digit"
+            }) : "TBD";
+            var pad = (l.pad && l.pad.name) ? l.pad.name : "Pad TBD";
+            var statusAbbrev = (l.status && l.status.abbrev) || "TBD";
+            var statusCls = statusAbbrev.toLowerCase().indexOf("go") !== -1 ? "go" :
+                            statusAbbrev.toLowerCase().indexOf("hold") !== -1 ? "hold" : "tbd";
+            return '<div class="launch-item">' +
+                     '<span class="launch-name">' + escapeHtml(l.name || "Starlink Launch") + '</span>' +
+                     '<div class="launch-meta">' +
+                       '<span class="launch-date">' + escapeHtml(date) + '</span>' +
+                       '<span class="launch-pad">' + escapeHtml(pad) + '</span>' +
+                     '</div>' +
+                     '<span class="launch-status ' + statusCls + '">' + escapeHtml(statusAbbrev) + '</span>' +
+                   '</div>';
+          }).join("");
+        })
+        .catch(function(e) {
+          var container = document.getElementById("launches-feed");
+          if (container) {
+            container.innerHTML = '<div class="news-loading">Launch data unavailable. <a href="https://www.spacex.com/launches/" target="_blank" rel="noopener">View on SpaceX ↗</a></div>';
+          }
+        });
+    }
+
+    // ─── RSS News Feed — resilient multi-source cascade ───
+    // Strategy: try multiple RSS feeds through 2 different CORS proxies,
+    // parse XML client-side, filter for starlink keyword, stop at first hit.
+    var NEWS_FEEDS = [
+      { url: "https://spacenews.com/section/launch/feed/",        source: "SpaceNews",     filter: true  },
+      { url: "https://www.space.com/feeds/all",                    source: "Space.com",     filter: true  },
+      { url: "https://www.nasaspaceflight.com/feed/",              source: "NASASpaceflight", filter: true },
+      { url: "https://spacenews.com/feed/",                        source: "SpaceNews",     filter: true  }
+    ];
+
+    // Fallback static cards if EVERY feed fails
+    var NEWS_FALLBACK = [
+      { title: "SpaceX Starlink Mission Feed",
+        url:   "https://www.spacex.com/launches/",
+        source:"SpaceX",
+        desc:  "Official launch manifest — upcoming and recent Starlink missions." },
+      { title: "SpaceNews — Starlink tag",
+        url:   "https://spacenews.com/tag/starlink/",
+        source:"SpaceNews",
+        desc:  "Curated Starlink-related news coverage." },
+      { title: "NASASpaceflight Starlink coverage",
+        url:   "https://www.nasaspaceflight.com/tag/starlink/",
+        source:"NSF",
+        desc:  "Technical articles on Starlink launches and constellation status." },
+      { title: "Jonathan's Space Report — Starlink stats",
+        url:   "https://planet4589.org/space/con/star/stats.html",
+        source:"J. McDowell",
+        desc:  "Authoritative statistics on the Starlink constellation." },
+      { title: "CelesTrak Starlink group",
+        url:   "https://celestrak.org/NORAD/elements/gp.php?GROUP=starlink",
+        source:"CelesTrak",
+        desc:  "Live TLE data — the source powering this dashboard." }
+    ];
+
+    function renderNews(items, sourceLabel) {
+      var container = document.getElementById("news-feed");
+      if (!container) return;
+      container.innerHTML = items.slice(0, 8).map(function(item) {
+        var date = item.pubDate ? new Date(item.pubDate).toLocaleDateString("pt-BR", {
+          day: "2-digit", month: "short", year: "numeric"
+        }) : "";
+        var desc = (item.description || "").replace(/<[^>]*>/g, "").trim();
+        if (desc.length > 140) desc = desc.slice(0, 140) + "...";
+        return '<div class="news-item">' +
+                 '<a class="news-title" href="' + escapeAttr(item.link) + '" target="_blank" rel="noopener">' +
+                   escapeHtml(item.title || "Untitled") +
+                 '</a>' +
+                 '<div class="news-meta">' +
+                   '<span class="news-source">' + escapeHtml(item.source || sourceLabel || "News") + '</span>' +
+                   (date ? '<span>' + escapeHtml(date) + '</span>' : '') +
+                 '</div>' +
+                 (desc ? '<div class="news-desc">' + escapeHtml(desc) + '</div>' : '') +
+               '</div>';
+      }).join("");
+    }
+
+    function renderNewsFallback() {
+      var container = document.getElementById("news-feed");
+      if (!container) return;
+      var intro = '<div class="news-item" style="border-bottom: 1px solid var(--jb-border); padding-bottom: 6px; margin-bottom: 6px;">' +
+                    '<div class="news-desc" style="color: var(--jb-text-mute);">' +
+                      '$ RSS feeds temporarily unreachable — showing curated sources:' +
+                    '</div>' +
+                  '</div>';
+      container.innerHTML = intro + NEWS_FALLBACK.map(function(item) {
+        return '<div class="news-item">' +
+                 '<a class="news-title" href="' + escapeAttr(item.url) + '" target="_blank" rel="noopener">' +
+                   escapeHtml(item.title) +
+                 '</a>' +
+                 '<div class="news-meta">' +
+                   '<span class="news-source">' + escapeHtml(item.source) + '</span>' +
+                 '</div>' +
+                 '<div class="news-desc">' + escapeHtml(item.desc) + '</div>' +
+               '</div>';
+      }).join("");
+    }
+
+    function parseRssXml(xmlText, sourceLabel) {
+      try {
+        var parser = new DOMParser();
+        var doc = parser.parseFromString(xmlText, "application/xml");
+        if (doc.querySelector("parsererror")) return null;
+        var nodes = doc.querySelectorAll("item, entry");
+        var items = [];
+        for (var i = 0; i < nodes.length; i++) {
+          var n = nodes[i];
+          var getText = function(sel) {
+            var el = n.querySelector(sel);
+            return el ? (el.textContent || "").trim() : "";
+          };
+          var linkEl = n.querySelector("link");
+          var link = linkEl ? (linkEl.textContent || linkEl.getAttribute("href") || "").trim() : "";
+          items.push({
+            title:       getText("title"),
+            link:        link,
+            description: getText("description") || getText("summary") || getText("content"),
+            pubDate:     getText("pubDate") || getText("published") || getText("updated"),
+            source:      sourceLabel
+          });
+        }
+        return items;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function fetchFeedViaProxy(feedUrl) {
+      // Primary proxy: allorigins.win — returns raw XML wrapped in JSON
+      var proxyUrl = "https://api.allorigins.win/get?url=" + encodeURIComponent(feedUrl);
+      return fetch(proxyUrl)
+        .then(function(r) { return r.ok ? r.json() : Promise.reject("allorigins HTTP " + r.status); })
+        .then(function(data) {
+          if (!data || !data.contents) throw new Error("empty contents");
+          return data.contents;
+        })
+        .catch(function(e1) {
+          // Fallback proxy: rss2json
+          var r2jUrl = "https://api.rss2json.com/v1/api.json?rss_url=" + encodeURIComponent(feedUrl) + "&count=20";
+          return fetch(r2jUrl)
+            .then(function(r) { return r.ok ? r.json() : Promise.reject("rss2json HTTP " + r.status); })
+            .then(function(data) {
+              if (data.status !== "ok" || !data.items || !data.items.length) {
+                throw new Error("rss2json empty");
+              }
+              // Convert rss2json format to pseudo-xml-parser items
+              return { __rss2json: true, items: data.items.map(function(it) {
+                return {
+                  title: it.title, link: it.link,
+                  description: it.description, pubDate: it.pubDate
+                };
+              })};
+            });
+        });
+    }
+
+    function tryFeed(index) {
+      if (index >= NEWS_FEEDS.length) {
+        renderNewsFallback();
+        return;
+      }
+      var feed = NEWS_FEEDS[index];
+      fetchFeedViaProxy(feed.url)
+        .then(function(payload) {
+          var items;
+          if (payload && payload.__rss2json) {
+            items = payload.items.map(function(it) { it.source = feed.source; return it; });
+          } else {
+            items = parseRssXml(payload, feed.source);
+          }
+          if (!items || items.length === 0) throw new Error("no items");
+          if (feed.filter) {
+            items = items.filter(function(it) {
+              var hay = ((it.title || "") + " " + (it.description || "")).toLowerCase();
+              return hay.indexOf("starlink") !== -1;
+            });
+          }
+          if (items.length === 0) throw new Error("no starlink items in " + feed.source);
+          renderNews(items, feed.source);
+        })
+        .catch(function(e) {
+          // Try next feed in cascade
+          tryFeed(index + 1);
+        });
+    }
+
+    function loadNews() {
+      tryFeed(0);
+    }
+
+    function escapeHtml(s) {
+      return String(s == null ? "" : s)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+    function escapeAttr(s) { return escapeHtml(s); }
+
+    // Run news loaders after a brief delay to avoid blocking satellite init
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", function() {
+        setTimeout(loadLaunches, 600);
+        setTimeout(loadNews, 800);
+      });
+    } else {
+      setTimeout(loadLaunches, 600);
+      setTimeout(loadNews, 800);
+    }
+  })();
+  </script>
+
+  <!-- ═══ MAIN APPLICATION SCRIPT (byte-identical to original) ═══ -->
+  <script>
+    // ==================== CONFIGURAÇÃO GLOBAL ====================
+    const DATA_URL = "data/starlink_tle.json";
+    const META_URL = "data/meta.json";
+    const REFRESH_MS = 3000;
+    
+    // TLEs de fallback válidos (Gen2 Starlink)
+    const FALLBACK_TLEs = [
+      {
+        "name": "STARLINK-30440",
+        "noradId": "57812",
+        "line1": "1 57812U 23126W   24219.25000000  .00000832  00000-0  73125-4 0  9995",
+        "line2": "2 57812  43.0010 315.8972 0.0003456 268.7432  91.3456 15.02531234 52348"
+      },
+      {
+        "name": "STARLINK-30441",
+        "noradId": "57813",
+        "line1": "1 57813U 23126X   24219.26000000  .00000945  00000-0  81234-4 0  9993",
+        "line2": "2 57813  43.0012 316.1234 0.0002987 269.1234  90.8765 15.02531456 52349"
+      },
+      {
+        "name": "STARLINK-30442",
+        "noradId": "57814",
+        "line1": "1 57814U 23126Y   24219.27000000  .00000756  00000-0  69876-4 0  9991",
+        "line2": "2 57814  43.0008 315.7654 0.0003789 268.9876  91.0123 15.02531678 52350"
+      },
+      {
+        "name": "STARLINK-30443",
+        "noradId": "57815",
+        "line1": "1 57815U 23126Z   24219.28000000  .00000634  00000-0  58901-4 0  9990",
+        "line2": "2 57815  43.0015 316.2345 0.0002456 269.3456  90.6543 15.02531890 52351"
+      },
+      {
+        "name": "STARLINK-30444",
+        "noradId": "57816",
+        "line1": "1 57816U 23126AA  24219.29000000  .00000723  00000-0  65432-4 0  9992",
+        "line2": "2 57816  43.0009 315.9876 0.0003123 268.8765  91.1234 15.02532102 52352"
+      },
+      {
+        "name": "STARLINK-31001",
+        "noradId": "58001",
+        "line1": "1 58001U 23127A   24219.30000000  .00000512  00000-0  52341-4 0  9994",
+        "line2": "2 58001  43.0020 325.1234 0.0002134 267.5678 92.4321 15.02530987 52360"
+      },
+      {
+        "name": "STARLINK-31002",
+        "noradId": "58002",
+        "line1": "1 58002U 23127B   24219.31000000  .00000623  00000-0  61234-4 0  9996",
+        "line2": "2 58002  43.0018 324.9876 0.0002567 268.1234 91.8765 15.02531123 52361"
+      },
+      {
+        "name": "STARLINK-31003",
+        "noradId": "58003",
+        "line1": "1 58003U 23127C   24219.32000000  .00000734  00000-0  72567-4 0  9998",
+        "line2": "2 58003  43.0016 324.7654 0.0002890 268.6789 91.3210 15.02531456 52362"
+      }
+    ];
+    
+    // ==================== ESTADO GLOBAL ====================
+    let currentView = 'map';
+    let globe3D = null;
+    let scene3D, camera3D, renderer3D;
+    let earthMesh, satellites3D = [];
+    let autoRotate = false;
+    let orbitsPaused = false;
+    let animationId = null;
+    
+    let tleList = [];
+    let satRecs = [];
+    let map, layerGroup, footprintGroup, trajectoryGroup;
+    let obs = { lat: -27.588, lon: -48.613, elevMin: 25 };
+    let selectedSatellite = null;
+    let isDrawing = false;
+    let selectedPopup = null; // Para manter o popup aberto
+    
+    let config = {
+      showFootprints: true,
+      footprintSelectedOnly: false,
+      showTrajectory: false,
+      trajectorySelectedOnly: false,
+      maxFootprints: 5,
+      filters: {
+        LEO: true,
+        MEO: true,
+        HEO: true,
+        visible: true,
+        all: true
+      }
+    };
+    
+    // ==================== INICIALIZAÇÃO ====================
+    
+    async function init() {
+      updateTerminalLog("SYSTEM", "Initializing Starlink Tactical Operations...");
+      
+      console.log(`%c
+╔═══════════════════════════════════════════╗
+║     STARLINK TACTICAL OPERATIONS         ║
+║         CENTRO OPERACIONAL TÁTICO        ║
+╚═══════════════════════════════════════════╝
+      `, "color: #00ff00; font-family: monospace");
+      
+      try {
+        await loadSatelliteData();
+        init2DMap();
+        setupControls();
+        setObserverLocation();
+        startSimulation();
+        updateTerminalLog("SYSTEM", "TACTICAL OPERATIONS CENTER ONLINE");
+      } catch (e) {
+        updateTerminalLog("ERROR", `Critical failure: ${e.message}`);
+      }
+    }
+    
+    async function loadSatelliteData() {
+      updateTerminalLog("DATA", "Loading satellite orbital elements...");
+      
+      try {
+        // Tentar carregar metadados primeiro
+        try {
+          const metaResponse = await fetch(META_URL);
+          if (metaResponse.ok) {
+            const meta = await metaResponse.json();
+            document.getElementById("meta").innerHTML = 
+              `[SATS: ${meta.count}] [SRC: ${meta.source}] [UPD: ${new Date(meta.updatedAt).toLocaleString('pt-BR')}]`;
+            updateTerminalLog("DATA", `Metadata loaded: ${meta.count} satellites`);
+          }
+        } catch (e) {
+          updateTerminalLog("WARNING", "Metadata not available");
+        }
+        
+        // Tentar carregar dados externos
+        const dataResponse = await fetch(DATA_URL);
+        if (dataResponse.ok) {
+          tleList = await dataResponse.json();
+          updateTerminalLog("DATA", `${tleList.length} TLEs loaded from external source`);
+        } else {
+          throw new Error("External data not available");
+        }
+        
+      } catch (e) {
+        updateTerminalLog("WARNING", `External data unavailable: ${e.message}`);
+        updateTerminalLog("DATA", "Switching to tactical fallback constellation...");
+        
+        tleList = FALLBACK_TLEs;
+        document.getElementById("meta").innerHTML = `[FALLBACK MODE] [SATS: ${tleList.length}] [STATUS: TACTICAL]`;
+        updateTerminalLog("DATA", `${tleList.length} tactical satellites loaded from fallback`);
+      }
+      
+      // Processar TLEs
+      updateTerminalLog("CALC", "Processing orbital elements with SGP4...");
+      parseTLEData();
+    }
+    
+    function parseTLEData() {
+      satRecs = [];
+      let validCount = 0;
+      
+      tleList.forEach((tle, index) => {
+        try {
+          if (!tle.line1 || !tle.line2) {
+            updateTerminalLog("TLE", `Invalid TLE format for ${tle.name || index}`);
+            satRecs.push(null);
+            return;
+          }
+          
+          const satrec = satellite.twoline2satrec(tle.line1, tle.line2);
+          
+          if (satrec.error) {
+            updateTerminalLog("TLE", `SGP4 error for ${tle.name}: ${satrec.error}`);
+            satRecs.push(null);
+            return;
+          }
+          
+          // Test propagation
+          const testTime = new Date();
+          const testResult = satellite.propagate(satrec, testTime);
+          
+          if (!testResult.position || isNaN(testResult.position.x)) {
+            updateTerminalLog("TLE", `Propagation failed for ${tle.name}`);
+            satRecs.push(null);
+            return;
+          }
+          
+          satRecs.push(satrec);
+          validCount++;
+          
+        } catch (e) {
+          updateTerminalLog("TLE", `Error processing ${tle.name}: ${e.message}`);
+          satRecs.push(null);
+        }
+      });
+      
+      updateTerminalLog("CALC", `${validCount}/${tleList.length} satellites ready for tracking`);
+      updateStats(0, 0, validCount);
+    }
+    
+    function init2DMap() {
+      updateTerminalLog("MAP", "Initializing tactical map system...");
+      
+      map = L.map("map", { 
+        worldCopyJump: true,
+        preferCanvas: true,
+        renderer: L.canvas(),
+        zoomControl: false
+      }).setView([obs.lat, obs.lon], 3);
+      
+      // Dark tactical map
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© TACTICAL MAP',
+        subdomains: 'abcd',
+        maxZoom: 10,
+        minZoom: 2
+      }).addTo(map);
+      
+      // Layer groups
+      layerGroup = L.layerGroup().addTo(map);
+      footprintGroup = L.layerGroup().addTo(map);
+      trajectoryGroup = L.layerGroup().addTo(map);
+      
+      // Observer location marker - TRIÂNGULO BRANCO TÁTICO
+      const observerIcon = L.divIcon({
+        html: `<div style="
+          width: 0;
+          height: 0;
+          border-left: 8px solid transparent;
+          border-right: 8px solid transparent;
+          border-bottom: 14px solid #ffffff;
+          filter: drop-shadow(0 0 6px #ffffff);
+          transform: rotate(0deg);
+        "></div>`,
+        iconSize: [16, 16],
+        iconAnchor: [8, 14],
+        className: 'tactical-base-marker'
+      });
+      
+      L.marker([obs.lat, obs.lon], { icon: observerIcon }).addTo(map)
+        .bindPopup('<strong>TACTICAL BASE</strong><br>Campinas, SC<br>Status: OPERATIONAL');
+      
+      updateTerminalLog("MAP", "Tactical map system online");
+    }
+    
+    function setupControls() {
+      document.getElementById("btnApply").addEventListener('click', () => {
+        setObserverLocation();
+        updateSatellites();
+        updateTerminalLog("CMD", "Tactical parameters updated");
+      });
+      
+      // Pause button
+      document.getElementById("btnPause").addEventListener('click', () => {
+        orbitsPaused = !orbitsPaused;
+        const btn = document.getElementById("btnPause");
+        btn.textContent = orbitsPaused ? "RESUME ORBITS" : "PAUSE ORBITS";
+        btn.classList.toggle('active', orbitsPaused);
+        updateTerminalLog("CMD", `Orbital motion ${orbitsPaused ? 'PAUSED' : 'RESUMED'}`);
+        
+        // Update 3D globe display
+        const globeOrbits = document.getElementById("globe-orbits");
+        if (globeOrbits) {
+          globeOrbits.textContent = orbitsPaused ? "PAUSED" : "ACTIVE";
+        }
+      });
+      
+      // Checkbox controls
+      document.getElementById("showFootprints").addEventListener('change', (e) => {
+        config.showFootprints = e.target.checked;
+        updateTerminalLog("CONFIG", `Footprints ${config.showFootprints ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("footprintSelectedOnly").addEventListener('change', (e) => {
+        config.footprintSelectedOnly = e.target.checked;
+        updateTerminalLog("CONFIG", `Footprint selected only ${config.footprintSelectedOnly ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("showTrajectory").addEventListener('change', (e) => {
+        config.showTrajectory = e.target.checked;
+        updateTerminalLog("CONFIG", `Trajectory ${config.showTrajectory ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("trajectorySelectedOnly").addEventListener('change', (e) => {
+        config.trajectorySelectedOnly = e.target.checked;
+        updateTerminalLog("CONFIG", `Trajectory selected only ${config.trajectorySelectedOnly ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      // Orbit filter controls
+      document.getElementById("filterLEO").addEventListener('change', (e) => {
+        config.filters.LEO = e.target.checked;
+        updateTerminalLog("FILTER", `LEO filter ${config.filters.LEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterMEO").addEventListener('change', (e) => {
+        config.filters.MEO = e.target.checked;
+        updateTerminalLog("FILTER", `MEO filter ${config.filters.MEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterHEO").addEventListener('change', (e) => {
+        config.filters.HEO = e.target.checked;
+        updateTerminalLog("FILTER", `HEO filter ${config.filters.HEO ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterVisible").addEventListener('change', (e) => {
+        config.filters.visible = e.target.checked;
+        updateTerminalLog("FILTER", `Visible filter ${config.filters.visible ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+      
+      document.getElementById("filterAll").addEventListener('change', (e) => {
+        config.filters.all = e.target.checked;
+        updateTerminalLog("FILTER", `All filter ${config.filters.all ? 'enabled' : 'disabled'}`);
+        updateSatellites();
+      });
+    }
+    
+    function setObserverLocation() {
+      const lat = parseFloat(document.getElementById('lat').value);
+      const lon = parseFloat(document.getElementById('lon').value);
+      const elevMin = parseFloat(document.getElementById('elevMin').value);
+      
+      if (isNaN(lat) || isNaN(lon) || isNaN(elevMin)) {
+        updateTerminalLog('OBS', 'Invalid tactical coordinates');
+        return;
+      }
+      
+      obs = {
+        lat: lat,
+        lon: lon,
+        elevMin: elevMin,
+        height: 0
+      };
+      
+      if (map) {
+        map.setView([lat, lon], map.getZoom());
+      }
+      
+      updateTerminalLog('OBS', `Tactical position: ${lat.toFixed(3)}°N, ${lon.toFixed(3)}°W, Elev>${elevMin}°`);
+    }
+    
+    function startSimulation() {
+      updateTerminalLog('SIM', 'Starting real-time orbital tracking...');
+      
+      // Main update loop
+      setInterval(() => {
+        if (!isDrawing && !orbitsPaused) {
+          updateSatellites();
+        }
+      }, REFRESH_MS);
+      
+      // Initial update
+      updateSatellites();
+    }
+    
+    // ==================== GLOBO 3D CORRIGIDO ====================
+    
+    function init3DGlobe() {
+      const container = document.getElementById('globe');
+      if (!container) {
+        updateTerminalLog('3D', 'ERROR: Globe container not found');
+        return;
+      }
+      
+      updateTerminalLog('3D', 'Initializing tactical 3D display...');
+      
+      // Clear previous content
+      container.innerHTML = '';
+      
+      // Scene setup - TÁTICO PRETO
+      scene3D = new THREE.Scene();
+      scene3D.background = new THREE.Color(0x000000); // Preto tático
+      
+      // Camera setup
+      const aspect = container.clientWidth / container.clientHeight;
+      camera3D = new THREE.PerspectiveCamera(50, aspect, 1, 200000);
+      camera3D.position.set(20000, 15000, 20000);
+      camera3D.lookAt(0, 0, 0);
+      
+      // Renderer setup
+      renderer3D = new THREE.WebGLRenderer({ 
+        antialias: true,
+        alpha: false
+      });
+      renderer3D.setSize(container.clientWidth, container.clientHeight);
+      renderer3D.setClearColor(0x000000, 1); // Fundo preto tático
+      renderer3D.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer3D.domElement);
+      
+      updateTerminalLog('3D', `Renderer created: ${container.clientWidth}x${container.clientHeight}`);
+      
+      // Lighting - TÁTICO
+      const ambientLight = new THREE.AmbientLight(0x404040, 0.6); // Luz ambiente reduzida
+      scene3D.add(ambientLight);
+      
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8); // Luz direcionada reduzida
+      directionalLight.position.set(30000, 20000, 30000);
+      scene3D.add(directionalLight);
+      
+      updateTerminalLog('3D', 'Tactical lighting configured');
+      
+      createEarth();
+      setupGlobeControls();
+      
+      updateTerminalLog('3D', 'Earth and controls created');
+      
+      // Wait for satellites then create them
+      setTimeout(() => {
+        if (satRecs && satRecs.length > 0) {
+          create3DSatellites();
+          globe3D = true;
+          animate3D();
+          updateTerminalLog('3D', 'Animation started');
+        } else {
+          updateTerminalLog('3D', 'No satellites available, retrying...');
+          setTimeout(() => init3DGlobe(), 2000);
+        }
+      }, 500);
+    }
+    
+    function createEarth() {
+      // Terra TÁTICA PRETA
+      const earthGeometry = new THREE.SphereGeometry(6371, 128, 64);
+      const earthMaterial = new THREE.MeshPhongMaterial({
+        color: 0x111111, // Cinza escuro tático
+        emissive: 0x000000, // Sem emissão
+        emissiveIntensity: 0,
+        specular: 0x222222, // Reflexo muito sutil
+        shininess: 5,
+        transparent: false,
+        opacity: 1.0
+      });
+      
+      earthMesh = new THREE.Mesh(earthGeometry, earthMaterial);
+      scene3D.add(earthMesh);
+      
+      // Wireframe tático verde
+      const wireframeGeometry = new THREE.SphereGeometry(6372, 64, 32);
+      const wireframeMaterial = new THREE.MeshBasicMaterial({
+        color: 0x004400, // Verde escuro tático
+        wireframe: true,
+        transparent: true,
+        opacity: 0.4
+      });
+      const wireframeMesh = new THREE.Mesh(wireframeGeometry, wireframeMaterial);
+      scene3D.add(wireframeMesh);
+      
+      // Observer location - TRIÂNGULO BRANCO TÁTICO
+      const markerGeometry = new THREE.ConeGeometry(200, 400, 3); // Cone triangular
+      const markerMaterial = new THREE.MeshBasicMaterial({
+        color: 0xffffff, // Branco brilhante
+        emissive: 0xffffff,
+        emissiveIntensity: 0.5
+      });
+      const observerMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+      
+      const lat = obs.lat * Math.PI / 180;
+      const lon = obs.lon * Math.PI / 180;
+      const radius = 6371 + 100;
+      
+      observerMarker.position.x = radius * Math.cos(lat) * Math.cos(lon);
+      observerMarker.position.y = radius * Math.sin(lat);
+      observerMarker.position.z = radius * Math.cos(lat) * Math.sin(lon);
+      
+      // Orientar o triângulo para cima
+      observerMarker.lookAt(
+        observerMarker.position.x * 2,
+        observerMarker.position.y * 2,
+        observerMarker.position.z * 2
+      );
+      
+      scene3D.add(observerMarker);
+      
+      updateTerminalLog('3D', 'Tactical Earth and base marker created');
+    }
+    
+    function create3DSatellites() {
+      updateTerminalLog('3D', `Creating 3D satellites - TLE count: ${tleList.length}, SGP4 count: ${satRecs.length}`);
+      
+      const validSats = satRecs.filter(r => r !== null);
+      if (validSats.length === 0) {
+        updateTerminalLog('3D', 'No valid satellites for 3D display, retrying...');
+        setTimeout(create3DSatellites, 2000);
+        return;
+      }
+      
+      updateTerminalLog('3D', `Found ${validSats.length} valid satellites, creating 3D objects...`);
+      
+      // Clear existing satellites
+      satellites3D.forEach(sat => {
+        if (sat.parent) {
+          sat.parent.remove(sat);
+        }
+        if (sat.material) sat.material.dispose();
+        if (sat.geometry) sat.geometry.dispose();
+      });
+      satellites3D = [];
+      
+      // Create very small satellite points
+      const satGeometry = new THREE.SphereGeometry(15, 6, 6);
+      let createdCount = 0;
+      let positionedCount = 0;
+      
+      updateTerminalLog('3D', 'Geometry created, processing satellites...');
+      
+      satRecs.forEach((satrec, index) => {
+        if (!satrec) return;
+        
+        try {
+          // Create bright material
+          const material = new THREE.MeshBasicMaterial({
+            color: 0x00ff00,
+            transparent: false
+          });
+          
+          const satelliteMesh = new THREE.Mesh(satGeometry, material);
+          satelliteMesh.userData = { 
+            index: index,
+            tle: tleList[index],
+            rec: satrec
+          };
+          
+          createdCount++;
+          
+          // Get current position
+          const currentTime = new Date();
+          const result = satellite.propagate(satrec, currentTime);
+          
+          if (result.position && !isNaN(result.position.x)) {
+            // Convert ECI to world coordinates
+            const x = result.position.x;
+            const y = result.position.z;
+            const z = -result.position.y;
+            
+            satelliteMesh.position.set(x, y, z);
+            
+            // Calculate altitude for color
+            const radius = Math.sqrt(
+              result.position.x * result.position.x + 
+              result.position.y * result.position.y + 
+              result.position.z * result.position.z
+            );
+            const altitude = radius - 6371;
+            
+            // Color by altitude with bright colors
+            let color;
+            if (altitude > 600) {
+              color = 0xff0000; // Red
+            } else if (altitude > 550) {
+              color = 0xffff00; // Yellow
+            } else if (altitude > 500) {
+              color = 0x00ff00; // Green
+            } else {
+              color = 0x0000ff; // Blue
+            }
+            
+            material.color.setHex(color);
+            
+            scene3D.add(satelliteMesh);
+            satellites3D.push(satelliteMesh);
+            positionedCount++;
+            
+          } else {
+            // Fallback positioning
+            const alt = 550 + (index % 10) * 30;
+            const radius = 6371 + alt;
+            const angle = (index / Math.max(tleList.length, 1)) * 2 * Math.PI;
+            const inclination = (43 + (index % 15)) * Math.PI / 180;
+            
+            const x = radius * Math.cos(angle) * Math.cos(inclination);
+            const y = radius * Math.sin(inclination);
+            const z = radius * Math.sin(angle) * Math.cos(inclination);
+            
+            satelliteMesh.position.set(x, y, z);
+            
+            let color = alt > 600 ? 0xff0000 : alt > 550 ? 0xffff00 : 0x00ff00;
+            material.color.setHex(color);
+            
+            scene3D.add(satelliteMesh);
+            satellites3D.push(satelliteMesh);
+            positionedCount++;
+          }
+          
+        } catch (e) {
+          updateTerminalLog('3D', `ERROR creating satellite ${index}: ${e.message}`);
+        }
+      });
+      
+      const globeSatsEl = document.getElementById('globe-sats');
+      if (globeSatsEl) globeSatsEl.textContent = positionedCount;
+      
+      updateTerminalLog('3D', `CREATION COMPLETE: ${createdCount} created, ${positionedCount} positioned`);
+      updateTerminalLog('3D', `Scene children count: ${scene3D.children.length}`);
+      
+      // Force render
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+        updateTerminalLog('3D', 'Initial render completed');
+      }
+    }
+    
+    function update3DSatellites() {
+      if (satellites3D.length === 0 || orbitsPaused) return;
+      
+      const currentTime = new Date();
+      let updated = 0;
+      
+      satellites3D.forEach((sat) => {
+        const rec = sat.userData.rec;
+        if (!rec) return;
+        
+        try {
+          const result = satellite.propagate(rec, currentTime);
+          if (!result.position) return;
+          
+          const pos = result.position;
+          if (isNaN(pos.x) || isNaN(pos.y) || isNaN(pos.z)) return;
+          
+          // Update position
+          sat.position.set(pos.x, pos.z, -pos.y);
+          
+          // Calculate altitude for color coding
+          const radius = Math.sqrt(pos.x * pos.x + pos.y * pos.y + pos.z * pos.z);
+          const altitude = radius - 6371;
+          
+          // Color by altitude or selection
+          let color;
+          const isSelected = selectedSatellite && selectedSatellite.index === sat.userData.index;
+          
+          if (isSelected) {
+            color = 0xffffff; // BRANCO para selecionado
+          } else if (altitude > 600) {
+            color = 0xff0000; // Red for high altitude
+          } else if (altitude > 550) {
+            color = 0xffff00; // Yellow for medium altitude
+          } else if (altitude > 500) {
+            color = 0x00ff00; // Green for normal altitude
+          } else {
+            color = 0x0000ff; // Blue for low altitude
+          }
+          
+          if (sat.material && sat.material.color && sat.material.color.setHex) {
+            sat.material.color.setHex(color);
+          }
+          
+          updated++;
+          
+        } catch (e) {
+          // Silent error handling for performance
+        }
+      });
+    }
+    
+    function setupGlobeControls() {
+      const container = document.getElementById('globe');
+      if (!container || !renderer3D) return;
+      
+      let mouseDown = false;
+      let mouseX = 0;
+      let mouseY = 0;
+      
+      const canvas = renderer3D.domElement;
+      
+      canvas.addEventListener('mousedown', (e) => {
+        mouseDown = true;
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+        e.preventDefault();
+      });
+      
+      canvas.addEventListener('mousemove', (e) => {
+        if (!mouseDown || !camera3D) return;
+        
+        const deltaX = e.clientX - mouseX;
+        const deltaY = e.clientY - mouseY;
+        
+        const spherical = new THREE.Spherical();
+        spherical.setFromVector3(camera3D.position);
+        spherical.theta -= deltaX * 0.01;
+        spherical.phi += deltaY * 0.01;
+        spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi));
+        camera3D.position.setFromSpherical(spherical);
+        camera3D.lookAt(0, 0, 0);
+        
+        mouseX = e.clientX;
+        mouseY = e.clientY;
+      });
+      
+      canvas.addEventListener('mouseup', () => {
+        mouseDown = false;
+      });
+      
+      canvas.addEventListener('wheel', (e) => {
+        if (!camera3D) return;
+        const scale = e.deltaY > 0 ? 1.1 : 0.9;
+        camera3D.position.multiplyScalar(scale);
+        camera3D.position.clampLength(8000, 80000);
+        e.preventDefault();
+      });
+      
+      updateTerminalLog('3D', 'Globe controls configured');
+    }
+    
+    let lastTime = 0;
+    let frameCount = 0;
+    
+    function animate3D() {
+      if (currentView !== 'globe' || !globe3D || !renderer3D) {
+        if (animationId) {
+          cancelAnimationFrame(animationId);
+          animationId = null;
+        }
+        return;
+      }
+      
+      animationId = requestAnimationFrame(animate3D);
+      
+      // FPS counter
+      frameCount++;
+      const currentTime = performance.now();
+      if (currentTime >= lastTime + 1000) {
+        const fps = document.getElementById('globe-fps');
+        if (fps) fps.textContent = frameCount;
+        frameCount = 0;
+        lastTime = currentTime;
+      }
+      
+      // Time display
+      const timeEl = document.getElementById('globe-time');
+      if (timeEl) {
+        const now = new Date();
+        timeEl.textContent = now.toLocaleTimeString('pt-BR');
+      }
+      
+      // Auto rotate
+      if (autoRotate && earthMesh) {
+        earthMesh.rotation.y += 0.002;
+      }
+      
+      // Update satellites
+      if (!orbitsPaused) {
+        update3DSatellites();
+      }
+      
+      // Render
+      if (renderer3D && scene3D && camera3D) {
+        renderer3D.render(scene3D, camera3D);
+      }
+    }
+    
+    // ==================== CÁLCULOS DE SATÉLITE ====================
+    
+    function getOrbitType(altitude) {
+      if (altitude < 2000) {
+        return 'LEO';
+      } else if (altitude < 35786) {
+        return 'MEO';
+      } else {
+        return 'HEO';
+      }
+    }
+    
+    function calculateTrajectory(rec, steps = 20, timeStepMinutes = 10) {
+      const trajectoryPoints = [];
+      const currentTime = new Date();
+      
+      for (let i = 0; i <= steps; i++) {
+        const futureTime = new Date(currentTime.getTime() + i * timeStepMinutes * 60000);
+        const st = getSatState(rec, futureTime);
+        
+        if (st) {
+          trajectoryPoints.push([st.lat, st.lon]);
+        }
+      }
+      
+      return trajectoryPoints;
+    }
+    
+    function shouldShowSatellite(st, isVisible) {
+      const orbitType = getOrbitType(st.alt);
+      
+      // Se "All Possible" não estiver marcado, não mostra nada
+      if (!config.filters.all) {
+        return false;
+      }
+      
+      // Se é visível mas o filtro "visible" está desmarcado, não mostra
+      if (isVisible && !config.filters.visible) {
+        return false;
+      }
+      
+      // Check orbit type filters
+      if (!config.filters[orbitType]) {
+        return false;
+      }
+      
+      return true;
+    }
+    
+    function getSatState(rec, time = new Date()) {
+      try {
+        if (!rec) return null;
+        
+        const gmst = satellite.gstime(time);
+        const pv = satellite.propagate(rec, time);
+        
+        if (!pv || !pv.position || pv.position === false) return null;
+        
+        const eci = pv.position;
+        const vel = pv.velocity || {x: 0, y: 0, z: 0};
+        const gd = satellite.eciToGeodetic(eci, gmst);
+        
+        const lat = satellite.radiansToDegrees(gd.latitude);
+        const lon = satellite.radiansToDegrees(gd.longitude);
+        const alt = gd.height;
+        
+        const speed = Math.sqrt(vel.x**2 + vel.y**2 + vel.z**2);
+        
+        // Calculate look angles from observer
+        const obsGd = {
+          latitude: satellite.degreesToRadians(obs.lat),
+          longitude: satellite.degreesToRadians(obs.lon),
+          height: 0
+        };
+        
+        const satEcf = satellite.eciToEcf(eci, gmst);
+        const look = satellite.ecfToLookAngles(obsGd, satEcf);
+        
+        const az = satellite.radiansToDegrees(look.azimuth);
+        const el = satellite.radiansToDegrees(look.elevation);
+        const range = look.rangeSat;
+        
+        return { lat, lon, alt, az, el, range, speed };
+      } catch (err) {
+        return null;
+      }
+    }
+    
+    function calculateLinkBudget(elevationDeg) {
+      const FREQ = 11.5e9; // Hz (Ku-band downlink)
+      const EIRP = 35; // dBW (satellite EIRP)
+      const GAIN = 33; // dBi (user terminal gain)
+      
+      // Free space path loss calculation
+      const distance = 550 / Math.sin(Math.max(elevationDeg, 1) * Math.PI / 180);
+      const FSPL = 20 * Math.log10(distance * 1000) + 20 * Math.log10(FREQ) + 92.45;
+      
+      // Atmospheric losses (higher at low elevations)
+      const atmosphericLoss = 0.5 / Math.sin(Math.max(elevationDeg, 5) * Math.PI / 180);
+      
+      const rxPower = EIRP - FSPL - atmosphericLoss + GAIN;
+      
+      return { rxPower, FSPL };
+    }
+    
+    // ==================== ATUALIZAÇÃO DE SATÉLITES CORRIGIDA ====================
+    
+    function updateSatellites() {
+      if (isDrawing) return;
+      isDrawing = true;
+      
+      const startTime = performance.now();
+      
+      layerGroup.clearLayers();
+      footprintGroup.clearLayers();
+      trajectoryGroup.clearLayers();
+      
+      let visible = 0;
+      let drawn = 0;
+      let filtered = 0;
+      let selectedMarker = null; // Para manter referência do marker selecionado
+      const MAX_DRAW = 1000;
+      const step = Math.ceil(tleList.length / MAX_DRAW);
+      
+      for (let i = 0; i < tleList.length; i += step) {
+        const t = tleList[i];
+        const rec = satRecs[i];
+        
+        if (!rec) continue;
+        
+        const st = getSatState(rec);
+        if (!st) continue;
+        
+        const isVisible = st.el >= obs.elevMin;
+        const isSelected = selectedSatellite && selectedSatellite.index === i;
+        
+        // Apply filters (but always show selected satellite)
+        if (!shouldShowSatellite(st, isVisible) && !isSelected) {
+          filtered++;
+          continue;
+        }
+        
+        // Color by altitude with better visibility for "all possible"
+        let color, radius, opacity;
+        
+        if (isSelected) {
+          color = '#ffffff'; // BRANCO para selecionado
+          radius = 6;
+          opacity = 1.0;
+        } else if (isVisible) {
+          // Color by altitude for visible satellites
+          if (st.alt > 600) {
+            color = '#ff0000'; // Red: high altitude
+          } else if (st.alt > 550) {
+            color = '#ffff00'; // Yellow: medium altitude
+          } else if (st.alt > 500) {
+            color = '#00ff00'; // Green: normal altitude
+          } else {
+            color = '#0000ff'; // Blue: low altitude
+          }
+          radius = 3;
+          opacity = 0.8;
+          visible++;
+        } else {
+          // Not visible satellites - darker green when "all possible" is on
+          color = config.filters.all ? '#006600' : '#004400'; // Darker green for better visibility
+          radius = 2;
+          opacity = config.filters.all ? 0.6 : 0.3; // More opaque when showing all
+        }
+        
+        const marker = L.circleMarker([st.lat, st.lon], {
+          radius: radius,
+          weight: isSelected ? 3 : 1,
+          color: color,
+          fillColor: color,
+          fillOpacity: opacity,
+          opacity: opacity + 0.2,
+          className: isSelected ? 'selected-satellite' : ''
+        });
+        
+        const linkBudget = calculateLinkBudget(st.el);
+        const orbitType = getOrbitType(st.alt);
+        
+        // Create popup content
+        const popupContent = `
+          <div class="terminal-popup">
+<strong>[${t.name || "SAT"}]</strong>
+NORAD: ${t.noradId}
+ORBIT: ${orbitType}
+ALT..: ${st.alt.toFixed(0)} km
+ELEV.: ${st.el.toFixed(1)}°
+AZIM.: ${st.az.toFixed(1)}°
+RANGE: ${(st.range/1000).toFixed(0)} km
+SPEED: ${st.speed.toFixed(2)} km/s
+FSPL.: ${linkBudget.FSPL.toFixed(1)} dB
+          </div>
+        `;
+        
+        marker.bindPopup(popupContent, {
+          autoClose: false,
+          closeOnEscapeKey: false, // Não fechar com ESC para manter persistente
+          keepInView: true,
+          autoPan: false
+        });
+        
+        // Store the actual index in the marker for correct selection
+        marker.satelliteIndex = i;
+        marker.satelliteData = { t, rec, st };
+        
+        marker.on('click', (e) => {
+          const clickedIndex = e.target.satelliteIndex;
+          const clickedData = e.target.satelliteData;
+          
+          selectSatellite(clickedIndex, clickedData.t, clickedData.rec, clickedData.st);
+          
+          // Manter popup aberto e armazenar referência
+          selectedPopup = e.target;
+          e.target.openPopup();
+          
+          updateTerminalLog('CLICK', `Selected satellite ${clickedIndex}: ${clickedData.t.name} (${getOrbitType(clickedData.st.alt)})`);
+        });
+        
+        // Se este é o satélite selecionado, armazena para manter popup
+        if (isSelected) {
+          selectedMarker = marker;
+        }
+        
+        marker.addTo(layerGroup);
+        drawn++;
+        
+        // Trajectories
+        if (config.showTrajectory) {
+          const shouldShowTraj = config.trajectorySelectedOnly ? isSelected : true;
+          
+          if (shouldShowTraj) {
+            const trajectoryPoints = calculateTrajectory(rec, 15, 12);
+            
+            if (trajectoryPoints.length > 1) {
+              const trajectoryColor = isSelected ? '#ffffff' : color; // Branco para trajetória selecionada
+              
+              L.polyline(trajectoryPoints, {
+                color: trajectoryColor,
+                weight: isSelected ? 3 : 2,
+                opacity: isSelected ? 0.8 : 0.5,
+                dashArray: isSelected ? '5,0' : '10,5',
+                interactive: false
+              }).addTo(trajectoryGroup);
+            }
+          }
+        }
+        
+        // Footprints
+        if (config.showFootprints && isVisible) {
+          // Se "Selected Only" estiver marcado, só mostra footprint do satélite selecionado
+          const shouldShowFootprint = config.footprintSelectedOnly ? isSelected : (visible <= config.maxFootprints);
+          
+          if (shouldShowFootprint) {
+            const footprintRadius = calculateFootprintRadius(st.alt, obs.elevMin);
+            L.circle([st.lat, st.lon], {
+              radius: footprintRadius * 1000,
+              color: isSelected ? '#ffffff' : '#00ff00', // Branco para footprint selecionado
+              weight: 2,
+              opacity: 0.6,
+              fillColor: isSelected ? '#ffffff' : '#00ff00',
+              fillOpacity: 0.1,
+              interactive: false,
+              dashArray: '5,10'
+            }).addTo(footprintGroup);
+          }
+        }
+      }
+      
+      // MANTER POPUP ABERTO para satélite selecionado
+      if (selectedMarker && selectedSatellite) {
+        // Atualizar posição do popup e reabrir se necessário
+        setTimeout(() => {
+          if (selectedMarker && !selectedMarker.isPopupOpen()) {
+            selectedMarker.openPopup();
+          }
+        }, 100);
+      }
+      
+      const elapsed = performance.now() - startTime;
+      
+      // Update mission status
+      document.getElementById("visibleInfo").innerHTML = `
+        <div class="data-row">
+          <span class="data-label">STATUS:</span>
+          <span class="data-value good">OPERATIONAL</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">RENDER:</span>
+          <span class="data-value">${elapsed.toFixed(0)} ms</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">FILTERED:</span>
+          <span class="data-value">${filtered}</span>
+        </div>
+      `;
+      
+      updateStats(visible, drawn, satRecs.filter(r => r !== null).length);
+      isDrawing = false;
+    }
+    
+    function calculateFootprintRadius(altKm, elevMinDeg) {
+      const Re = 6371; // Earth radius km
+      const h = altKm;
+      const e = elevMinDeg * Math.PI / 180;
+      const psi = Math.acos((Re/(Re+h)) * Math.cos(e)) - e;
+      return Re * psi;
+    }
+    
+    function selectSatellite(index, t, rec, st) {
+      selectedSatellite = { index, tle: t, rec, state: st };
+      
+      const linkBudget = calculateLinkBudget(st.el);
+      const orbitType = getOrbitType(st.alt);
+      
+      // Update target overlay
+      const targetInfo = document.getElementById('targetInfo');
+      targetInfo.innerHTML = `
+        <div class="data-row">
+          <span class="data-label">SAT ID:</span>
+          <span class="data-value">${t.name}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">ORBIT:</span>
+          <span class="data-value">${orbitType}</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">ELEV:</span>
+          <span class="data-value">${st.el.toFixed(1)}°</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">AZIM:</span>
+          <span class="data-value">${st.az.toFixed(1)}°</span>
+        </div>
+        <div class="data-row">
+          <span class="data-label">RANGE:</span>
+          <span class="data-value">${(st.range/1000).toFixed(0)} km</span>
+        </div>
+      `;
+      
+      // Update satellite info panel
+      updateSatelliteInfo(index, st, linkBudget);
+      updateRFAnalysis(st, linkBudget);
+      updateOrbitalInfo(t, rec);
+      
+      updateTerminalLog('SELECT', `Satellite selected: ${t.name} [${t.noradId}] - ${orbitType} orbit`);
+    }
+    
+    function updateSatelliteInfo(index, st, linkBudget) {
+      const satInfo = document.getElementById('sat-info');
+      const t = tleList[index];
+      
+      if (!t || !st) {
+        updateTerminalLog('SAT', 'Invalid satellite selection');
+        return;
+      }
+      
+      const noradId = t.line1 ? t.line1.substring(2, 7) : t.noradId;
+      
+      satInfo.innerHTML = `
+        <div class="sat-info-item">
+          <span class="sat-info-label">NORAD</span>
+          <span class="sat-info-value">${noradId}</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">NAME</span>
+          <span class="sat-info-value">${(t.name || "SAT").substring(0, 12)}</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">ALTITUDE</span>
+          <span class="sat-info-value">${st.alt.toFixed(0)} km</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">VELOCITY</span>
+          <span class="sat-info-value">${st.speed.toFixed(2)} km/s</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">ELEVATION</span>
+          <span class="sat-info-value">${st.el.toFixed(1)}°</span>
+        </div>
+        <div class="sat-info-item">
+          <span class="sat-info-label">AZIMUTH</span>
+          <span class="sat-info-value">${st.az.toFixed(1)}°</span>
+        </div>
+      `;
+    }
+    
+    function updateRFAnalysis(st, linkBudget) {
+      document.getElementById('rf-power').textContent = `${linkBudget.rxPower.toFixed(1)} dBm`;
+      document.getElementById('rf-fspl').textContent = `${linkBudget.FSPL.toFixed(1)} dB`;
+      
+      // Link status determination
+      let status, statusClass;
+      if (st.el < obs.elevMin) {
+        status = 'BELOW HORIZON';
+        statusClass = 'critical';
+      } else if (linkBudget.rxPower > -80) {
+        status = 'EXCELLENT';
+        statusClass = 'good';
+      } else if (linkBudget.rxPower > -90) {
+        status = 'GOOD';
+        statusClass = 'good';
+      } else if (linkBudget.rxPower > -100) {
+        status = 'MARGINAL';
+        statusClass = 'warning';
+      } else {
+        status = 'POOR';
+        statusClass = 'critical';
+      }
+      
+      const statusEl = document.getElementById('rf-status');
+      statusEl.textContent = status;
+      statusEl.className = `data-value ${statusClass}`;
+    }
+    
+    function updateOrbitalInfo(t, rec) {
+      const orbitalInfo = document.getElementById('orbital-info');
+      
+      if (!t || !rec) {
+        orbitalInfo.innerHTML = `
+          <div class="sat-info-grid">
+            <div class="sat-info-item">
+              <span class="sat-info-label">STATUS</span>
+              <span class="sat-info-value">NO SATELLITE</span>
+            </div>
+            <div class="sat-info-item">
+              <span class="sat-info-label">ACTION</span>
+              <span class="sat-info-value">SELECT SAT</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
+      // Extract orbital elements from TLE
+      const line1 = t.line1;
+      const line2 = t.line2;
+      
+      if (!line1 || !line2) {
+        orbitalInfo.innerHTML = `
+          <div class="sat-info-grid">
+            <div class="sat-info-item">
+              <span class="sat-info-label">ERROR</span>
+              <span class="sat-info-value">INVALID TLE</span>
+            </div>
+          </div>
+        `;
+        return;
+      }
+      
+      const inclination = parseFloat(line2.substring(8, 16));
+      const raan = parseFloat(line2.substring(17, 25));
+      const eccentricity = parseFloat('0.' + line2.substring(26, 33));
+      const argPerigee = parseFloat(line2.substring(34, 42));
+      const meanAnomaly = parseFloat(line2.substring(43, 51));
+      const meanMotion = parseFloat(line2.substring(52, 63));
+      
+      const period = 1440 / meanMotion; // minutes
+      
+      orbitalInfo.innerHTML = `
+        <div class="sat-info-grid">
+          <div class="sat-info-item">
+            <span class="sat-info-label">INCLINATION</span>
+            <span class="sat-info-value">${inclination.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">RAAN</span>
+            <span class="sat-info-value">${raan.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ECCENTRICITY</span>
+            <span class="sat-info-value">${eccentricity.toFixed(6)}</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">ARG PERIGEE</span>
+            <span class="sat-info-value">${argPerigee.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">MEAN ANOMALY</span>
+            <span class="sat-info-value">${meanAnomaly.toFixed(2)}°</span>
+          </div>
+          <div class="sat-info-item">
+            <span class="sat-info-label">PERIOD</span>
+            <span class="sat-info-value">${period.toFixed(1)} min</span>
+          </div>
+        </div>
+      `;
+    }
+    
+    // ==================== CONTROLES ====================
+    
+    function switchView(view) {
+      currentView = view;
+      
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+      });
+      event.target.classList.add('active');
+      
+      document.querySelectorAll('.view-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.getElementById(view + '-view').classList.add('active');
+      
+      if (view === 'globe') {
+        updateTerminalLog('VIEW', 'Switching to 3D Globe view');
+        if (!globe3D) {
+          updateTerminalLog('3D', 'Globe not initialized, starting initialization...');
+          setTimeout(() => init3DGlobe(), 200);
+        } else {
+          updateTerminalLog('3D', 'Globe already initialized, resuming animation');
+          animate3D();
+        }
+      }
+      
+      updateTerminalLog('VIEW', `Display mode: ${view.toUpperCase()}`);
+    }
+    
+    function resetGlobeView() {
+      if (camera3D) {
+        camera3D.position.set(15000, 10000, 15000);
+        camera3D.lookAt(0, 0, 0);
+      }
+      if (earthMesh) {
+        earthMesh.rotation.set(0, 0, 0);
+      }
+      updateTerminalLog('3D', 'Tactical view reset');
+    }
+    
+    function toggleRotation() {
+      autoRotate = !autoRotate;
+      const rotEl = document.getElementById('globe-rotation');
+      if (rotEl) rotEl.textContent = autoRotate ? 'ON' : 'OFF';
+      updateTerminalLog('3D', `Auto-rotation ${autoRotate ? 'enabled' : 'disabled'}`);
+    }
+    
+    // ==================== UTILITÁRIOS ====================
+    
+    function updateTerminalLog(type, message) {
+      const time = new Date().toLocaleTimeString('pt-BR', { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+      
+      const terminal = document.getElementById('terminalOutput');
+      if (terminal) {
+        const line = document.createElement('div');
+        line.className = 'terminal-line';
+        line.innerHTML = `<span class="time">[${time}]</span> <span class="type">[${type}]</span> <span class="message">${message}</span>`;
+        terminal.appendChild(line);
+        terminal.scrollTop = terminal.scrollHeight;
+        
+        while (terminal.children.length > 50) {
+          terminal.removeChild(terminal.firstChild);
+        }
+      }
+      
+      console.log(`%c[${time}] [${type}] ${message}`, "color: #00ff00; font-family: monospace");
+    }
+    
+    function updateStats(visible, tracked, total) {
+      document.getElementById('stat-visible').textContent = visible || 0;
+      document.getElementById('stat-tracked').textContent = tracked || 0;
+      document.getElementById('stat-total').textContent = total || 0;
+    }
+    
+    // ==================== EVENT LISTENERS ====================
+    
+    window.addEventListener('resize', () => {
+      if (renderer3D && camera3D) {
+        const container = document.getElementById('globe');
+        if (container) {
+          camera3D.aspect = container.clientWidth / container.clientHeight;
+          camera3D.updateProjectionMatrix();
+          renderer3D.setSize(container.clientWidth, container.clientHeight);
+        }
+      }
+    });
+    
+    // Export functions
+    window.switchView = switchView;
+    window.resetGlobeView = resetGlobeView;
+    window.toggleRotation = toggleRotation;
+    
+    // ==================== INICIALIZAÇÃO ====================
+    
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', init);
+    } else {
+      init();
+    }
+  </script>
+
+</body>
+</html>
